@@ -59,4 +59,4 @@ jobs:
         with:
           app-name: 'CarinaTDBot'
           slot-name: 'production'
-          publish-profile: ${{ secrets.AzureAppService_PublishProfile_8d589b3102644db6882bfba50ab775a8 }}
+          publish-profile: ${{ secrets.AzureAppService_PublishProfile_b4e63bc9132a4cbca938a1e3964bd2e4 }}
