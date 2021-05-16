@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trdbot-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trdbot
+  template:
+    metadata:
+      labels:
+        app: trdbot
+    spec:
+      nodeSelector:
+        'beta.kubernetes.io/os': linux
+      containers:
+        - name: trdbot
+          image: trdbotacr.azurecr.io/trdbot:v1
+          ports:
+            - containerPort: 5000
