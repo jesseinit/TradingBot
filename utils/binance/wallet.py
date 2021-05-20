@@ -44,5 +44,6 @@ class Wallet:
         return response.json()
 
      # Todo - Get USDT Balance
-     # Todo - Add Swap Method
+     # Todo - Add Spot Trading Method (99.8% of Balance)
      # Todo - Retrieve the coin we are currently holding
+     # Todo - Get other crypto coin balance
