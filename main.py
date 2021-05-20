@@ -1,18 +1,35 @@
 from flask import Flask
-
-from blueprints.wallet.wallet_blueprint import wallet_blueprint
-from blueprints.listener.listener_blueprint import listener_blueprint
-
-app = Flask(__name__)
-
-app.register_blueprint(wallet_blueprint)
-app.register_blueprint(listener_blueprint)
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import MetaData
+from flask_migrate import Migrate
+from config import config
 
 
-@app.route("/")
-def hello_world():
-    return "<p>Hello Carina, what do you want to do today?</p>"
+db = SQLAlchemy()
+migrate = Migrate()
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+def create_app(config_name: str):
+    """Application factory
+    Args:
+        config_name (str): the application config name to determine which env to run on
+    Returns:
+        The Flask application object
+    """
+
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    from blueprints.listener.listener_blueprint import listener_blueprint
+    from blueprints.wallet.wallet_blueprint import wallet_blueprint
+
+    app.register_blueprint(wallet_blueprint)
+    app.register_blueprint(listener_blueprint)
+
+    @app.route("/")
+    def hello_world():
+        return "<p>Hello Carina, what do you want to do today?</p>"
+
+    return app

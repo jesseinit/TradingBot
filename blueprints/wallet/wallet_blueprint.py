@@ -12,5 +12,5 @@ def get_wallet_balance():
     coins_balances = [
         dict(coin=coin['coin'], name=coin['name'], free=coin['free'],
              locked=coin['locked'], freeze=coin['freeze'])
-        for coin in all_coins_data if coin['coin'] in Wallet.REQUIRED_COINS]
+        for coin in all_coins_data if coin['coin'] in Wallet.WALLET_COINS]
     return {"data": coins_balances}

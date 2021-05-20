@@ -12,7 +12,8 @@ class Wallet:
     BINANCE_API_KEY = config("BINANCE_API_KEY")
     BINANCE_API_SECRET = config("BINANCE_API_SECRET")
     BINANCE_BASE_URL = "https://api1.binance.com"
-    REQUIRED_COINS = ["BTC", "USDT", "ETH", "XLM", "LINK", "ADA"]
+    WALLET_COINS = ["BTC", "USDT", "ETH", "XLM", "LINK", "ADA", "ETC"]
+    TRADING_COINS = ["BTC", "ETH", "XLM", "LINK", "ADA", "ETC"]
 
     @classmethod
     def get_timestamp(cls):
@@ -41,3 +42,7 @@ class Wallet:
             return None
 
         return response.json()
+
+     # Todo - Get USDT Balance
+     # Todo - Add Swap Method
+     # Todo - Retrieve the coin we are currently holding
