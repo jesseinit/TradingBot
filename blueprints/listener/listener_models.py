@@ -12,7 +12,7 @@ class IncomingCoinLog(UtilityMixin, db.Model):  # type: ignore
     """ Logging Model that stores all incoming data from AI Server """
 
     id = db.Column(db.Integer, primary_key=True)
-    recieved_at = db.Column(db.DateTime, server_default=func.now())
+    received_at = db.Column(db.DateTime, server_default=func.now())
     coin_name = db.Column(db.String(100), nullable=False)
     incoming_trigger = db.Column(db.String(10), nullable=False)
     trigger_status = db.Column(db.Boolean, nullable=False)

@@ -2,7 +2,8 @@ import os
 from main import create_app
 from decouple import config
 
-app = create_app(config("FLASK_ENV") or "production")
+
+app = create_app(config("FLASK_ENV"))
 app.app_context().push()
 
 if __name__ == "__main__":

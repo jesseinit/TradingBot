@@ -22,7 +22,7 @@ def ai_listener():
     coin_signal = ai_response.get('data')[0]
     coin_name, trigger_name = coin_signal.keys()
     recieved_at = datetime.now()
-    incoming_log_instance = IncomingCoinLog(recieved_at=recieved_at, coin_name=coin_signal[coin_name],
+    incoming_log_instance = IncomingCoinLog(received_at=recieved_at, coin_name=coin_signal[coin_name],
                                             incoming_trigger=trigger_name,
                                             trigger_status=True if coin_signal[trigger_name] == "TRUE" else False)
     incoming_log_instance.save()
