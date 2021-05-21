@@ -1,8 +1,6 @@
 # Model to log all incoming coins and their current
 # CoinsStatusModel - id, created_at, updated_at, coin_name, trigger_one_status, trigger_two_status
 
-from uuid import uuid4
-
 from main import db
 from sqlalchemy import func
 from utils.model_utils import UtilityMixin
@@ -25,5 +23,24 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, default=func.now())
     coin_name = db.Column(db.String(100), unique=True, nullable=False)
-    trigger_one_status = db.Column(db.Boolean, default=False, nullable=False)
-    trigger_two_status = db.Column(db.Boolean, default=False, nullable=False)
+    trigger_one_status = db.Column(db.Boolean, default=False, nullable=True)
+    trigger_two_status = db.Column(db.Boolean, default=False, nullable=True)
+    is_holding = db.Column(db.Boolean, default=False, nullable=True)
+
+    def compute_trigger_state(self):
+        # Swap USDT to COIN
+        if all([self.trigger_two_status, self.trigger_one_status, self.is_holding is False]):
+            return "BUY"
+
+        # Swap COIN to USDT
+        # We return this when both triggers are false and we are currently holding it
+        if all([self.trigger_two_status is False, self.trigger_one_status is False, self.is_holding is True]):
+            return "SELL"
+
+        return None
+
+    def __str__(self) -> str:
+        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status}>"
+
+    def __repr__(self) -> str:
+        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status}>"

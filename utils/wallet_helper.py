@@ -1,9 +1,19 @@
+from binance.client import Client
 import hashlib
 import hmac
 import time
 
 import requests
 from decouple import config
+
+CURRENT_ENV = config('FLASK_ENV')
+
+
+BINANCE_API_KEY = config("BINANCE_API_KEY")
+BINANCE_API_SECRET = config("BINANCE_API_SECRET")
+
+BinanceClient = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
+# BinanceClient = Client(api_key, api_secret)
 
 
 class Wallet:
@@ -39,11 +49,36 @@ class Wallet:
         )
 
         if not response.ok:
+            print(response.text)
             return None
 
         return response.json()
 
-     # Todo - Get USDT Balance
-     # Todo - Add Spot Trading Method (99.8% of Balance)
-     # Todo - Retrieve the coin we are currently holding
-     # Todo - Get other crypto coin balance
+    # Todo - Get USDT/Any coin Balance
+    @classmethod
+    def retrieve_coin_balance(cls, coin: str = "USDT"):
+        """ Gets a coin balance in the wallet """
+        if CURRENT_ENV in ["test", 'development']:
+            return {
+                "asset": "USDT",
+                "free": "100000.00",
+                "locked": "0.00000000"
+            }
+
+        return BinanceClient.get_asset_balance(asset=coin)
+
+    # Todo - Add Swap Method
+    # Todo - Retrieve the coin we are currently holding
+    @classmethod
+    def create_test_order(self, symbol):
+        from binance.enums import SIDE_BUY, ORDER_TYPE_LIMIT, TIME_IN_FORCE_GTC
+        order = BinanceClient.create_test_order(
+            symbol=symbol,
+            side=SIDE_BUY,
+            type=ORDER_TYPE_LIMIT,
+            timeInForce=TIME_IN_FORCE_GTC,
+            quantity=0.01,
+            price='470.8'
+        )
+        print("TEST ORDER>>>", order)
+        return order

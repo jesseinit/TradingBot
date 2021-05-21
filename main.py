@@ -8,7 +8,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 
 
-def create_app(config_name: str):
+def create_app(config_name: str = "developement"):
     """Application factory
     Args:
         config_name (str): the application config name to determine which env to run on

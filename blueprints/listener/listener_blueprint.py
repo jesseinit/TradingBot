@@ -1,4 +1,5 @@
 
+from utils.wallet_helper import BinanceClient, Wallet
 from sqlalchemy.sql.expression import update
 from blueprints.listener.listener_models import IncomingCoinLog, CoinState
 from flask import Blueprint, request
@@ -28,7 +29,7 @@ def ai_listener():
     incoming_log_instance.save()
 
     # Create/Update Coin State Record
-    existing_user_instance = CoinState.query.filter_by(
+    coin_instance = CoinState.query.filter_by(
         coin_name=coin_signal[coin_name]).first()
 
     signal_type = {
@@ -38,26 +39,63 @@ def ai_listener():
             trigger_name] == "TRUE" else False
     }
 
-    if not existing_user_instance:
+    if not coin_instance:
         # Create the coin record for the first time
         CoinState(coin_name=coin_signal[coin_name],
                   trigger_one_status=signal_type['trigger1'],
                   trigger_two_status=signal_type["trigger2"]).save()
         return {"status": "response recieved"}
 
-    # Coin Record Exists So we update
-    if trigger_name == "trigger1":
-        existing_user_instance.update(
+    # Coin Record Exists So we update trigger state
+    if trigger_name == "trigger1" and coin_instance.is_holding is False:
+        coin_instance.update(
             trigger_one_status=signal_type['trigger1'])
 
-    if trigger_name == "trigger2":
-        existing_user_instance.update(
+    if trigger_name == "trigger2" and coin_instance.is_holding is False:
+        coin_instance.update(
             trigger_two_status=signal_type['trigger2'])
 
-    # Todo - We check for the trigger state of the coin to either swap coin to usdt(sell) or to swap to another coin with usdt(buy)
-    updated_coin_instance = CoinState.query.filter_by(
+    # Check currentl coin state
+    coin_state_instance = CoinState.query.filter_by(
         coin_name=coin_signal[coin_name]).first()
 
+    # Compute coin trigger state
+    trigger_state = coin_state_instance.compute_trigger_state()
+
+    print("trigger_state>>>>", trigger_state)
+
+    # Gets coin balance date for USDT
+    base_coin_balance_data = Wallet.retrieve_coin_balance()
+
+    # Parse avialable balance of USDT to float
+    free_coin_bal = float(base_coin_balance_data.get('free', 0.0))
+
+    if trigger_state == "BUY" and free_coin_bal > 10:
+        # compute 99.8% of coin
+        # buy coin with usdt
+        order = Wallet.create_test_order(
+            symbol=f"{coin_state_instance.coin_name}USDT")
+
+        print("ORDERRR>>>", order)
+        # TODO - Create TransactionOrder table to record logs
+        # set the coin to HOLD by updating is_holding field to true
+        # set update the trigger_one_status and trigger_two_status to null as a reset mechanism
+        coin_state_instance.update(
+            is_holding=True, trigger_one_status=None, trigger_two_status=None)
+
+        print(f"BOUGHT {coin_state_instance.coin_name} with USDT")
+
+    if trigger_state == "SELL" and free_coin_bal > 10:
+        # Todo - Complete
+        # We can only sell a coin if we are currently holding it
+
+        # Trigger a buy order
+        coin_state_instance.update(
+            is_holding=False, trigger_one_status=None, trigger_two_status=None)
+
+        print(f"BOUGHT {coin_state_instance.coin_name} with USDT")
+
+    # print("base_coin_balance>>>", float(base_coin_balance_data['free']))
     # Todo - Implement the required wallet methods to wther sell or buy coins.
 
     return {"status": "response recieved"}
