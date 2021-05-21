@@ -73,10 +73,10 @@ def ai_listener():
     if trigger_state == "BUY" and free_coin_bal > 10:
         # compute 99.8% of coin
         # buy coin with usdt
-        order = Wallet.create_test_order(
-            symbol=f"{coin_state_instance.coin_name}USDT")
+        # order = Wallet.create_test_order(
+        #     symbol=f"{coin_state_instance.coin_name}USDT")
 
-        print("ORDERRR>>>", order)
+        # print("ORDERRR>>>", order)
         # TODO - Create TransactionOrder table to record logs
         # set the coin to HOLD by updating is_holding field to true
         # set update the trigger_one_status and trigger_two_status to null as a reset mechanism
