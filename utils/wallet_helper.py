@@ -14,7 +14,6 @@ BINANCE_API_KEY = config("BINANCE_API_KEY")
 BINANCE_API_SECRET = config("BINANCE_API_SECRET")
 
 BinanceClient = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
-# BinanceClient = Client(api_key, api_secret)
 
 
 class Wallet:
@@ -59,13 +58,6 @@ class Wallet:
     @classmethod
     def retrieve_coin_balance(cls, coin: str = "USDT"):
         """ Gets a coin balance in the wallet """
-        if CURRENT_ENV in ["test", 'development']:
-            return {
-                "asset": "USDT",
-                "free": "100000.00",
-                "locked": "0.00000000"
-            }
-
         return BinanceClient.get_asset_balance(asset=coin)
 
     @classmethod
@@ -75,7 +67,6 @@ class Wallet:
             wallet_balance = BinanceClient.get_asset_balance(
                 asset="USDT").get("free")
             wallet_balance = float(wallet_balance)
-            # order_details = BinanceClient.create_test_order(
             order_details = BinanceClient.create_order(
                 symbol=symbol,
                 side=SIDE_BUY,

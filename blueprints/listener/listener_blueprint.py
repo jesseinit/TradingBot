@@ -46,11 +46,13 @@ def ai_listener():
     # Update only coins we are not currently holding.
     if trigger_name == "trigger1":
         coin_instance.update(
-            trigger_one_status=signal_type['trigger1'])
+            trigger_one_status=signal_type['trigger1'],
+            updated_at=datetime.now())
 
     if trigger_name == "trigger2":
         coin_instance.update(
-            trigger_two_status=signal_type['trigger2'])
+            trigger_two_status=signal_type['trigger2'],
+            updated_at=datetime.now())
 
     # Check current coin state
     coin_state_instance = CoinState.query.filter_by(
