@@ -25,22 +25,39 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
     coin_name = db.Column(db.String(100), unique=True, nullable=False)
     trigger_one_status = db.Column(db.Boolean, default=False, nullable=True)
     trigger_two_status = db.Column(db.Boolean, default=False, nullable=True)
-    is_holding = db.Column(db.Boolean, default=False, nullable=True)
+    is_holding = db.Column(db.Boolean, index=True,
+                           default=False, nullable=True)
 
     def compute_trigger_state(self):
         # Swap USDT to COIN
-        if all([self.trigger_two_status, self.trigger_one_status, self.is_holding is False]):
+        if all([self.trigger_one_status is True, self.trigger_two_status is True, self.is_holding is False]):
             return "BUY"
 
         # Swap COIN to USDT
         # We return this when both triggers are false and we are currently holding it
-        if all([self.trigger_two_status is False, self.trigger_one_status is False, self.is_holding is True]):
+        if all([self.trigger_one_status is False, self.trigger_two_status is False, self.is_holding is True]):
             return "SELL"
 
         return None
 
+    @classmethod
+    def currently_held_coin(cls):
+        """ Returns the coin we are currently holding(Already bought and waiting to sell) """
+        currently_holding = cls.query.filter_by(
+            is_holding=True).first()
+        return currently_holding
+
     def __str__(self) -> str:
-        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status}>"
+        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status} is_holding={self.is_holding}>"
 
     def __repr__(self) -> str:
-        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status}>"
+        return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status} is_holding={self.is_holding}>"
+
+
+# class TradeTransactions(UtilityMixin, db.Model):  # type: ignore
+#     """ Model to log all market trades """
+
+#     id = db.Column(db.Integer, primary_key=True)
+#     created_at = db.Column(db.DateTime, server_default=func.now())
+#     symbol = db.Column(db.String(10), nullable=False)
+#     order_id = db.Column(db.Integer, nullable=False)

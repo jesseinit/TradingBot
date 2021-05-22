@@ -1,9 +1,10 @@
-from binance.client import Client
 import hashlib
 import hmac
 import time
 
 import requests
+from binance.client import Client
+from binance.enums import ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
 
 CURRENT_ENV = config('FLASK_ENV')
@@ -67,18 +68,47 @@ class Wallet:
 
         return BinanceClient.get_asset_balance(asset=coin)
 
-    # Todo - Add Swap Method
-    # Todo - Retrieve the coin we are currently holding
     @classmethod
-    def create_test_order(self, symbol):
-        from binance.enums import SIDE_BUY, ORDER_TYPE_LIMIT, TIME_IN_FORCE_GTC
-        order = BinanceClient.create_test_order(
-            symbol=symbol,
-            side=SIDE_BUY,
-            type=ORDER_TYPE_LIMIT,
-            timeInForce=TIME_IN_FORCE_GTC,
-            quantity=0.01,
-            price='470.8'
-        )
-        print("TEST ORDER>>>", order)
-        return order
+    def buy_order(cls, symbol):
+        print("++++++++++++++++BUYING++++++++++++++++")
+        try:
+            wallet_balance = BinanceClient.get_asset_balance(
+                asset="USDT").get("free")
+            wallet_balance = float(wallet_balance)
+            # order_details = BinanceClient.create_test_order(
+            order_details = BinanceClient.create_order(
+                symbol=symbol,
+                side=SIDE_BUY,
+                type=ORDER_TYPE_MARKET,
+                quoteOrderQty=wallet_balance
+            )
+            print("COMPLETED TEST BUY ORDER>>>", order_details)
+            return order_details
+        except Exception as e:
+            # Todo - Implement Retry for logic here
+            print("Buy Exception>>>>", e.__dict__)
+
+    @classmethod
+    def sell_order(cls, symbol):
+        print("++++++++++++++++SELLLLING++++++++++++++++")
+        try:
+            coin = symbol.split("USDT")[0]
+            coin_balance = BinanceClient.get_asset_balance(
+                asset=coin).get("free")
+            order_details = BinanceClient.create_order(
+                # order_details = BinanceClient.create_test_order(
+                symbol=symbol,
+                side=SIDE_SELL,
+                type=ORDER_TYPE_MARKET,
+                quantity=round(float(coin_balance), 6)
+            )
+            print("COMPLETED TEST SELL ORDER>>>", order_details)
+            return order_details
+        except Exception as e:
+            # Todo - Implement Retry for logic here
+            print("Sell Exception>>>>", e.__dict__)
+        # cls.buy_price = current_coin_price
+
+    @classmethod
+    def orders(cls):
+        BinanceClient.get_all_orders()
