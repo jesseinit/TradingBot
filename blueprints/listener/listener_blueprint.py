@@ -62,18 +62,20 @@ def ai_listener():
 
     # We buy only when we are not holding any coin.
     if trigger_state == "BUY" and currently_held_coin is None:
-        order = Wallet.buy_order(
+        buy_order_details = Wallet.buy_order(
             symbol=f"{coin_state_instance.coin_name.upper()}USDT")
-        coin_state_instance.update(is_holding=True)
-        with open("buy_orders.log", 'a') as buy_log:
-            buy_log.write(f"{json.dumps(order)}\n")
+        if buy_order_details:
+            coin_state_instance.update(is_holding=True)
+            with open("buy_orders.log", 'a') as buy_log:
+                buy_log.write(f"{json.dumps(buy_order_details)}\n")
 
     if trigger_state == "SELL":
         sell_order_details = Wallet.sell_order(
             symbol=f"{coin_state_instance.coin_name.upper()}USDT")
-        coin_state_instance.update(
-            is_holding=False)
-        with open("sell_orders.log", 'a') as sell_log:
-            sell_log.write(f"{json.dumps(sell_order_details)}\n")
+        if sell_order_details:
+            coin_state_instance.update(
+                is_holding=False)
+            with open("sell_orders.log", 'a') as sell_log:
+                sell_log.write(f"{json.dumps(sell_order_details)}\n")
 
     return {"status": "response recieved"}
