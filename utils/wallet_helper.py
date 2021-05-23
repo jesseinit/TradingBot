@@ -82,7 +82,6 @@ class Wallet:
             coin_balance = BinanceClient.get_asset_balance(
                 asset=coin).get("free")
             coin_balance = round(float(coin_balance) * 0.999, 6)
-            print("coin_balance>>>", coin_balance)
             order_details = BinanceClient.create_order(
                 symbol=symbol,
                 side=SIDE_SELL,
