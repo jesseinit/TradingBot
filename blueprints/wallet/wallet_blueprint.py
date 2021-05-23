@@ -9,7 +9,7 @@ wallet_blueprint = Blueprint(
 @wallet_blueprint.route("/balance")
 def get_wallet_balance():
     coins_balances = [
-        BinanceClient.get_asset_balance(asset=coin)
+        Wallet.retrieve_coin_balance(coin=coin)
         for coin in Wallet.WALLET_COINS]
 
     return {"data": coins_balances}
