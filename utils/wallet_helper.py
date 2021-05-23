@@ -58,13 +58,11 @@ class Wallet:
                 asset=coin).get("free")
             symbol_info = BinanceClient.get_symbol_info(symbol=symbol)
             step_size = float(symbol_info['filters'][2]['stepSize'])
-            print("step_size>>>>", step_size)
             precision = int(round(-math.log(step_size, 10), 0))
-            print("precision>>>>", precision)
             coin_balance = float(coin_balance)
+            print("coin_balance>>>", coin_balance)
             final_quantity = round(coin_balance, precision)
-            print("coin_balance>>>>", coin_balance)
-            print("final_quantity>>>>", final_quantity)
+            print("final_quantity>>>", final_quantity)
 
             order_details = BinanceClient.create_order(
                 symbol=symbol,
@@ -74,16 +72,13 @@ class Wallet:
             )
 
             print("SELL ORDER COMPLETED>>>>", order_details)
-            wallet_balance = BinanceClient.get_asset_balance(
-                asset="USDT").get("free")
-            print("wallet_balance_after>>>", float(wallet_balance))
             return order_details
         except Exception as e:
             print("Sell Exception>>>>", e.__dict__)
-            # print("Sell Exception>>>>", dict(request=e.request, response=e.response.__dict__, exception=e.__dict__))
-
             max_allowed_qty = round(final_quantity, precision)
-            next_coin_value = round(coin_balance * 0.9999, precision)
+            print("max_allowed_qty>>", max_allowed_qty)
+            next_coin_value = round(coin_balance * 0.999, precision)
+            print("next_coin_value>>", next_coin_value)
 
             if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
                 retry_status = True
@@ -111,7 +106,7 @@ class Wallet:
                         if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
                             print("RECOMPUTING COIN VALUE>>>")
                             next_coin_value = round(
-                                next_coin_value * 0.9999, precision)
+                                next_coin_value * 0.999, precision)
                             if next_coin_value <= max_allowed_qty:
                                 # retry_status = False
                                 # Send mail to hugo about failed retry status
@@ -133,6 +128,6 @@ def retry_logic():
 
 
 # from utils.wallet_helper import Wallet, BinanceClient
-# buy_order_details = Wallet.buy_order(symbol=f"ETHUSDT")
-# sell_order_details = Wallet.sell_order(symbol=f"ETHUSDT")
+# buy_order_details = Wallet.buy_order(symbol=f"ETCUSDT")
+# sell_order_details = Wallet.sell_order(symbol=f"ETCUSDT")
 # BinanceClient.get_symbol_info(symbol="ETHUSDT")['filters']
