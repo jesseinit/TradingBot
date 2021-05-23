@@ -52,12 +52,3 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
 
     def __repr__(self) -> str:
         return f"<CoinState {self.coin_name}, T1={self.trigger_one_status}, T2={self.trigger_two_status} is_holding={self.is_holding}>"
-
-
-# class TradeTransactions(UtilityMixin, db.Model):  # type: ignore
-#     """ Model to log all market trades """
-
-#     id = db.Column(db.Integer, primary_key=True)
-#     created_at = db.Column(db.DateTime, server_default=func.now())
-#     symbol = db.Column(db.String(10), nullable=False)
-#     order_id = db.Column(db.Integer, nullable=False)

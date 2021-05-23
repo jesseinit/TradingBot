@@ -2,11 +2,11 @@
 from datetime import datetime
 import json
 
-from sqlalchemy.sql.expression import false
 
 from blueprints.listener.listener_models import CoinState, IncomingCoinLog
+from blueprints.wallet.wallet_models import TransactionsAudit
 from flask import Blueprint, request
-from utils.wallet_helper import BinanceClient, Wallet
+from utils.wallet_helper import Wallet
 
 listener_blueprint = Blueprint(
     "listener_blueprint", __name__, url_prefix="/api/v1/listener"
@@ -70,6 +70,20 @@ def ai_listener():
             coin_state_instance.update(is_holding=True)
             with open("buy_orders.log", 'a') as buy_log:
                 buy_log.write(f"{json.dumps(buy_order_details)}\n")
+            TransactionsAudit(
+                occured_at=datetime.fromtimestamp(
+                    int(str(buy_order_details['transactTime'])[:10])),
+                symbol=buy_order_details['symbol'],
+                client_order_id=buy_order_details['clientOrderId'],
+                orig_qty=buy_order_details['origQty'],
+                executed_qty=buy_order_details['executedQty'],
+                cummulative_quote_qty=buy_order_details['cummulativeQuoteQty'],
+                order_status=buy_order_details['status'],
+                time_in_force=buy_order_details['timeInForce'],
+                order_type=buy_order_details['type'],
+                side=buy_order_details['side'],
+                fills=buy_order_details['fills']
+            ).save()
 
     if trigger_state == "SELL":
         sell_order_details = Wallet.sell_order(
@@ -79,5 +93,19 @@ def ai_listener():
                 is_holding=False)
             with open("sell_orders.log", 'a') as sell_log:
                 sell_log.write(f"{json.dumps(sell_order_details)}\n")
+            TransactionsAudit(
+                occured_at=datetime.fromtimestamp(
+                    int(str(sell_order_details['transactTime'])[:10])),
+                symbol=sell_order_details['symbol'],
+                client_order_id=sell_order_details['clientOrderId'],
+                orig_qty=sell_order_details['origQty'],
+                executed_qty=sell_order_details['executedQty'],
+                cummulative_quote_qty=sell_order_details['cummulativeQuoteQty'],
+                order_status=sell_order_details['status'],
+                time_in_force=sell_order_details['timeInForce'],
+                order_type=sell_order_details['type'],
+                side=sell_order_details['side'],
+                fills=sell_order_details['fills']
+            ).save()
 
     return {"status": "response recieved"}

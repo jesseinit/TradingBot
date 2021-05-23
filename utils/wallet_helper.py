@@ -54,15 +54,13 @@ class Wallet:
 
         return response.json()
 
-    # Todo - Get USDT/Any coin Balance
     @classmethod
-    def retrieve_coin_balance(cls, coin: str = "USDT"):
+    def retrieve_coin_balance(cls, coin: str = "USDTTT"):
         """ Gets a coin balance in the wallet """
         return BinanceClient.get_asset_balance(asset=coin)
 
     @classmethod
     def buy_order(cls, symbol):
-        print("++++++++++++++++BUYING++++++++++++++++")
         try:
             wallet_balance = BinanceClient.get_asset_balance(
                 asset="USDT").get("free")
@@ -73,32 +71,27 @@ class Wallet:
                 type=ORDER_TYPE_MARKET,
                 quoteOrderQty=wallet_balance
             )
-            print("COMPLETED TEST BUY ORDER>>>", order_details)
             return order_details
         except Exception as e:
-            # Todo - Implement Retry for logic here
             print("Buy Exception>>>>", e.__dict__)
 
     @classmethod
     def sell_order(cls, symbol):
-        print("++++++++++++++++SELLLLING++++++++++++++++")
         try:
             coin = symbol.split("USDT")[0]
             coin_balance = BinanceClient.get_asset_balance(
                 asset=coin).get("free")
+            coin_balance = round(float(coin_balance) * 0.999, 6)
+            print("coin_balance>>>", coin_balance)
             order_details = BinanceClient.create_order(
-                # order_details = BinanceClient.create_test_order(
                 symbol=symbol,
                 side=SIDE_SELL,
                 type=ORDER_TYPE_MARKET,
-                quantity=round(float(coin_balance), 6)
+                quantity=coin_balance
             )
-            print("COMPLETED TEST SELL ORDER>>>", order_details)
             return order_details
         except Exception as e:
-            # Todo - Implement Retry for logic here
             print("Sell Exception>>>>", e.__dict__)
-        # cls.buy_price = current_coin_price
 
     @classmethod
     def orders(cls):

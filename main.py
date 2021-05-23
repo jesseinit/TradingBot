@@ -1,7 +1,9 @@
 from flask import Flask
+import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import config
+from binance.exceptions import BinanceAPIException
 
 
 db = SQLAlchemy()
@@ -26,6 +28,15 @@ def create_app(config_name: str = "developement"):
 
     app.register_blueprint(wallet_blueprint)
     app.register_blueprint(listener_blueprint)
+
+    @app.errorhandler(BinanceAPIException)
+    def handle_binance_exception(error):
+        """Error handler called when a BinanceAPIException Exception is raised"""
+        # print(type(error))
+        # response = error
+        # response.status_code = error.status_code
+        # return response
+        return {"message": error.message, "code": error.code}, error.status_code
 
     @app.route("/")
     def hello_world():
