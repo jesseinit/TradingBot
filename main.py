@@ -1,8 +1,9 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import config
 from binance.exceptions import BinanceAPIException
+from werkzeug.exceptions import HTTPException
 
 from flask_mail import Mail
 
@@ -35,11 +36,18 @@ def create_app(config_name: str = "developement"):
     @app.errorhandler(BinanceAPIException)
     def handle_binance_exception(error):
         """Error handler called when a BinanceAPIException Exception is raised"""
-        # print(type(error))
-        # response = error
-        # response.status_code = error.status_code
-        # return response
-        return {"message": error.message, "code": error.code}, error.status_code
+        from utils.mail_helper import MailHelper
+        MailHelper.send_exception_mail(error.message)
+        return {"message": error.message, "code": error.code}, getattr(error, 'status_code', 500)
+
+    def handle_error(error):
+        code = 500
+        if isinstance(error, HTTPException):
+            code = error.code
+        return jsonify(error='error', code=code)
+
+    for cls in HTTPException.__subclasses__():
+        app.register_error_handler(cls, handle_error)
 
     @app.route("/")
     def hello_world():

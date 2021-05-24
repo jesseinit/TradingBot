@@ -7,10 +7,12 @@ class Config:
     SECRET_KEY = "basdasdafasdf9sf759as5dfasdf"
     MAIL_SERVER = 'smtp.office365.com'
     MAIL_PORT = 587
-    MAIL_USERNAME = ''
-    MAIL_PASSWORD = ""
+    MAIL_USERNAME = "alerts@chc.capital"
+    MAIL_PASSWORD = config("SMTP_PASSWORD_ALERTS")
+    MAIL_DEFAULT_SENDER = ("TrdBot Alerts", "alerts@chc.capital")
     MAIL_USE_SSL = False
     MAIL_USE_TLS = True
+    MAIL_DEBUG = False
 
 
 class DevelopmentConfig(Config):

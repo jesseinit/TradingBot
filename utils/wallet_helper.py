@@ -5,7 +5,7 @@ import math
 from binance.client import Client
 from binance.enums import ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
-# from main import mail
+from main import mail
 
 CURRENT_ENV = config('FLASK_ENV')
 BINANCE_API_KEY = config("BINANCE_API_KEY")
@@ -120,3 +120,8 @@ class Wallet:
 # buy_order_details = Wallet.buy_order(symbol=f"ETCUSDT")
 # sell_order_details = Wallet.sell_order(symbol=f"ETCUSDT")
 # BinanceClient.get_symbol_info(symbol="ETHUSDT")['filters']
+
+# from main import mail
+# from flask_mail import Message
+# msg = Message("Hello", sender="alerts@chc.capial", recipients=["j3bsie@gmail.com"], body="SELL ORDER COMPLETED>>>>")
+# mail.send(msg)

@@ -1,11 +1,11 @@
 
-from datetime import datetime
 import json
-
+from datetime import datetime
 
 from blueprints.listener.listener_models import CoinState, IncomingCoinLog
 from blueprints.wallet.wallet_models import TransactionsAudit
 from flask import Blueprint, request
+from utils.mail_helper import MailHelper
 from utils.wallet_helper import Wallet
 
 listener_blueprint = Blueprint(
@@ -41,6 +41,9 @@ def ai_listener():
         CoinState(coin_name=coin_signal[coin_name],
                   trigger_one_status=signal_type['trigger1'],
                   trigger_two_status=signal_type["trigger2"]).save()
+        MailHelper.send_ai_incoming_mail(
+            recieved_at=recieved_at, coin_name=coin_signal[coin_name],
+            trigger_name=trigger_name)
         return {"status": "response recieved"}
 
     # Update only coins we are not currently holding.
@@ -86,6 +89,11 @@ def ai_listener():
                 side=buy_order_details['side'],
                 fills=buy_order_details['fills']
             ).save()
+            MailHelper.send_ai_incoming_mail(
+                recieved_at=recieved_at, coin_name=coin_signal[coin_name],
+                trigger_name=trigger_name)
+            MailHelper.send_success_buy_mail(order_details=buy_order_details)
+            return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
 
     if trigger_state == "SELL":
         sell_order_details = Wallet.sell_order(
@@ -110,5 +118,14 @@ def ai_listener():
                 side=sell_order_details['side'],
                 fills=sell_order_details['fills']
             ).save()
+            MailHelper.send_ai_incoming_mail(
+                recieved_at=recieved_at, coin_name=coin_signal[coin_name],
+                trigger_name=trigger_name)
+            MailHelper.send_success_sell_mail(order_details=sell_order_details)
+            return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
+
+    MailHelper.send_ai_incoming_mail(
+        recieved_at=recieved_at, coin_name=coin_signal[coin_name],
+        trigger_name=trigger_name)
 
     return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
