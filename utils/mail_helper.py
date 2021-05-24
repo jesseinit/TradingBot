@@ -21,8 +21,7 @@ class MailHelper:
         </html>
         """
         msg = Message("Incoming AI Data",
-                      #   recipients=["jesse@chc.capital", "hugo@chc.capital"],
-                      recipients=["jesse@chc.capital"],
+                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
                       html=ai_incoming_data_template)
         mail.send(msg)
 
