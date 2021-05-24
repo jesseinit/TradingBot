@@ -7,7 +7,7 @@ import json
 class MailHelper:
 
     @classmethod
-    def send_ai_incoming_mail(cls, recieved_at, coin_name, trigger_name):
+    def send_ai_incoming_mail(cls, recieved_at, coin_name, trigger_name, trigger_value):
         ai_incoming_data_template = f"""
         <html lang="en">
         <body>
@@ -16,11 +16,13 @@ class MailHelper:
             <p>Received At: {recieved_at.strftime("%d %B, %Y, %H:%M:%S")}</p>
             <p>Coin Name: {coin_name}</p>
             <p>Trigger Type: {trigger_name}</p>
+            <p>Trigger Value: {trigger_value}</p>
         </body>
         </html>
         """
         msg = Message("Incoming AI Data",
-                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      #   recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      recipients=["jesse@chc.capital"],
                       html=ai_incoming_data_template)
         mail.send(msg)
 

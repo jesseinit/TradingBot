@@ -43,7 +43,7 @@ def ai_listener():
                   trigger_two_status=signal_type["trigger2"]).save()
         MailHelper.send_ai_incoming_mail(
             recieved_at=recieved_at, coin_name=coin_signal[coin_name],
-            trigger_name=trigger_name)
+            trigger_name=trigger_name, trigger_value=signal_type[trigger_name])
         return {"status": "response recieved"}
 
     # Update only coins we are not currently holding.
@@ -91,7 +91,7 @@ def ai_listener():
             ).save()
             MailHelper.send_ai_incoming_mail(
                 recieved_at=recieved_at, coin_name=coin_signal[coin_name],
-                trigger_name=trigger_name)
+                trigger_name=trigger_name, trigger_value=signal_type[trigger_name])
             MailHelper.send_success_buy_mail(order_details=buy_order_details)
             return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
 
@@ -120,12 +120,12 @@ def ai_listener():
             ).save()
             MailHelper.send_ai_incoming_mail(
                 recieved_at=recieved_at, coin_name=coin_signal[coin_name],
-                trigger_name=trigger_name)
+                trigger_name=trigger_name, trigger_value=signal_type[trigger_name])
             MailHelper.send_success_sell_mail(order_details=sell_order_details)
             return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
 
     MailHelper.send_ai_incoming_mail(
         recieved_at=recieved_at, coin_name=coin_signal[coin_name],
-        trigger_name=trigger_name)
+        trigger_name=trigger_name, trigger_value=signal_type[trigger_name])
 
     return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
