@@ -1,13 +1,15 @@
 from flask import Flask
-import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import config
 from binance.exceptions import BinanceAPIException
 
+from flask_mail import Mail
+
 
 db = SQLAlchemy()
 migrate = Migrate()
+mail = Mail()
 
 
 def create_app(config_name: str = "developement"):
@@ -22,6 +24,7 @@ def create_app(config_name: str = "developement"):
     app.config.from_object(config[config_name])
     db.init_app(app)
     migrate.init_app(app, db)
+    mail.init_app(app)
 
     from blueprints.listener.listener_blueprint import listener_blueprint
     from blueprints.wallet.wallet_blueprint import wallet_blueprint

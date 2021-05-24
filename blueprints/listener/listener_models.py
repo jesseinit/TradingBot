@@ -34,8 +34,14 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
             return "BUY"
 
         # Swap COIN to USDT
-        # We return this when both triggers are false and we are currently holding it
-        if all([self.trigger_one_status is False, self.trigger_two_status is False, self.is_holding is True]):
+        # We return this when any of the triggers turns false and we are currently holding it
+        if self.trigger_one_status is False and self.trigger_two_status is True and self.is_holding is True:
+            return "SELL"
+
+        if self.trigger_one_status is True and self.trigger_two_status is False and self.is_holding is True:
+            return "SELL"
+
+        if all([self.trigger_one_status is False or self.trigger_two_status is False]) and self.is_holding is True:
             return "SELL"
 
         return None

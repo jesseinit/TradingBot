@@ -1,11 +1,16 @@
 import os
-from datetime import timedelta
 from decouple import config
 
 
 class Config:
     SQLALCHEMY_ECHO = True
     SECRET_KEY = "basdasdafasdf9sf759as5dfasdf"
+    MAIL_SERVER = 'smtp.office365.com'
+    MAIL_PORT = 587
+    MAIL_USERNAME = ''
+    MAIL_PASSWORD = ""
+    MAIL_USE_SSL = False
+    MAIL_USE_TLS = True
 
 
 class DevelopmentConfig(Config):

@@ -1,15 +1,13 @@
+import json
+from flask_mail import Message
+import math
+
 from binance.client import Client
 from binance.enums import ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
-import math
-from decimal import Decimal
-import logging
-logging.basicConfig(filename='example.log',
-                    encoding='utf-8', level=logging.DEBUG)
+# from main import mail
 
 CURRENT_ENV = config('FLASK_ENV')
-
-
 BINANCE_API_KEY = config("BINANCE_API_KEY")
 BINANCE_API_SECRET = config("BINANCE_API_SECRET")
 
@@ -19,8 +17,6 @@ BinanceClient = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
 class Wallet:
     """ Manages all operations to be performed on a binance wallet """
 
-    BINANCE_API_KEY = config("BINANCE_API_KEY")
-    BINANCE_API_SECRET = config("BINANCE_API_SECRET")
     BINANCE_BASE_URL = "https://api1.binance.com"
     WALLET_COINS = ["BTC", "USDT", "ETH", "XLM", "LINK", "ADA", "ETC"]
     TRADING_COINS = ["BTC", "ETH", "XLM", "LINK", "ADA", "ETC"]
@@ -37,7 +33,6 @@ class Wallet:
             wallet_balance = BinanceClient.get_asset_balance(
                 asset="USDT").get("free")
             wallet_balance = float(wallet_balance)
-            print("wallet_balance_before>>>", wallet_balance)
             order_details = BinanceClient.create_order(
                 symbol=symbol,
                 side=SIDE_BUY,
@@ -60,9 +55,9 @@ class Wallet:
             step_size = float(symbol_info['filters'][2]['stepSize'])
             precision = int(round(-math.log(step_size, 10), 0))
             coin_balance = float(coin_balance)
-            print("coin_balance>>>", coin_balance)
+            # print("coin_balance>>>", coin_balance)
             final_quantity = round(coin_balance, precision)
-            print("final_quantity>>>", final_quantity)
+            # print("final_quantity>>>", final_quantity)
 
             order_details = BinanceClient.create_order(
                 symbol=symbol,
@@ -71,14 +66,16 @@ class Wallet:
                 quantity=final_quantity
             )
 
+            # from flask_mail import Message
+            # msg = Message("Hello", sender="alerts@chc.capial", recipients=["j3bsie@gmail.com"], body="SELL ORDER COMPLETED>>>>")
+            # mail.send(msg)
+
             print("SELL ORDER COMPLETED>>>>", order_details)
             return order_details
         except Exception as e:
             print("Sell Exception>>>>", e.__dict__)
-            max_allowed_qty = round(final_quantity, precision)
-            print("max_allowed_qty>>", max_allowed_qty)
+            max_allowed_qty = round(final_quantity * 0.998, precision)
             next_coin_value = round(coin_balance * 0.999, precision)
-            print("next_coin_value>>", next_coin_value)
 
             if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
                 retry_status = True
@@ -117,14 +114,6 @@ class Wallet:
                 # Implement 3 trials
                 # Send mail to hugo about binana
                 print("Sell Exception>>>>", e.__dict__)
-
-    @classmethod
-    def orders(cls):
-        BinanceClient.get_all_orders()
-
-
-def retry_logic():
-    pass
 
 
 # from utils.wallet_helper import Wallet, BinanceClient
