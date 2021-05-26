@@ -7,6 +7,7 @@ from blueprints.wallet.wallet_models import TransactionsAudit
 from flask import Blueprint, request
 from utils.mail_helper import MailHelper
 from utils.wallet_helper import Wallet
+from main import logger
 
 listener_blueprint = Blueprint(
     "listener_blueprint", __name__, url_prefix="/api/v1/listener"
@@ -35,6 +36,9 @@ def ai_listener():
         "trigger2": True if trigger_name == "trigger2" and coin_signal[
             trigger_name] == "TRUE" else False
     }
+
+    logger.info(
+        f'INCOMING AI DATA>>> COIN_NAME:{coin_signal[coin_name]} SIGNAL:{trigger_name} VALUE:{signal_type[trigger_name]}')
 
     if not coin_instance:
         # Create the coin record for the first time
@@ -74,7 +78,7 @@ def ai_listener():
             order_data = buy_order_details
             coin_state_instance.update(is_holding=True)
             with open("buy_orders.log", 'a') as buy_log:
-                buy_log.write(f"{json.dumps(buy_order_details)}\n")
+                buy_log.write(f"{json.dumps(buy_order_details)}\n\n")
             TransactionsAudit(
                 occured_at=datetime.fromtimestamp(
                     int(str(buy_order_details['transactTime'])[:10])),
@@ -103,7 +107,7 @@ def ai_listener():
             coin_state_instance.update(
                 is_holding=False)
             with open("sell_orders.log", 'a') as sell_log:
-                sell_log.write(f"{json.dumps(sell_order_details)}\n")
+                sell_log.write(f"{json.dumps(sell_order_details)}\n\n")
             TransactionsAudit(
                 occured_at=datetime.fromtimestamp(
                     int(str(sell_order_details['transactTime'])[:10])),

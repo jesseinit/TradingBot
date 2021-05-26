@@ -60,20 +60,18 @@ class Wallet:
             precision = int(round(-math.log(step_size, 10), 0))
             coin_balance = float(coin_balance)
             final_quantity = round(coin_balance, precision)
-
             order_details = BinanceClient.create_order(
                 symbol=symbol,
                 side=SIDE_SELL,
                 type=ORDER_TYPE_MARKET,
                 quantity=final_quantity
             )
-
             logger.info(f'COMPLETED A SELL FOR>>> {symbol}', extra={
                         "custom_dimensions": order_details})
+
             return order_details
         except Exception as e:
-            properties = {'custom_dimensions': dict(
-                request=e.request, response=e.response.__dict__, exception=e.__dict__)}
+            properties = {'custom_dimensions': e}
             logger.exception(
                 f'ERROR OCCURED SELLING>>> {symbol}', extra=properties)
             max_allowed_qty = round(final_quantity * 0.998, precision)
@@ -123,13 +121,3 @@ class Wallet:
     def retry_sell_order(cls, symbol):
         # Todo - Extract retry logic to this function
         pass
-
-# from utils.wallet_helper import Wallet, BinanceClient
-# buy_order_details = Wallet.buy_order(symbol=f"ETCUSDT")
-# sell_order_details = Wallet.sell_order(symbol=f"ETCUSDT")
-# BinanceClient.get_symbol_info(symbol="ETHUSDT")['filters']
-
-# from main import mail
-# from flask_mail import Message
-# msg = Message("Hello", sender="alerts@chc.capial", recipients=["j3bsie@gmail.com"], body="SELL ORDER COMPLETED>>>>")
-# mail.send(msg)
