@@ -1,12 +1,20 @@
-from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from config import config
+import logging
+
 from binance.exceptions import BinanceAPIException
+from flask import Flask, jsonify
+from flask_mail import Mail
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from werkzeug.exceptions import HTTPException
 
-from flask_mail import Mail
+from config import config as app_config
+from decouple import config
 
+logger = logging.getLogger(__name__)
+logger.addHandler(AzureLogHandler(
+    connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"))
+logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -22,7 +30,7 @@ def create_app(config_name: str = "developement"):
     """
 
     app = Flask(__name__)
-    app.config.from_object(config[config_name])
+    app.config.from_object(app_config[config_name])
     db.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)

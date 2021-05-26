@@ -1,11 +1,9 @@
-import json
-from flask_mail import Message
 import math
 
 from binance.client import Client
 from binance.enums import ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
-from main import mail
+from main import logger
 
 CURRENT_ENV = config('FLASK_ENV')
 BINANCE_API_KEY = config("BINANCE_API_KEY")
@@ -30,6 +28,7 @@ class Wallet:
     @classmethod
     def buy_order(cls, symbol):
         try:
+            logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
             wallet_balance = BinanceClient.get_asset_balance(
                 asset="USDT").get("free")
             wallet_balance = float(wallet_balance)
@@ -39,15 +38,20 @@ class Wallet:
                 type=ORDER_TYPE_MARKET,
                 quoteOrderQty=wallet_balance
             )
-            print("BUY ORDER COMPLETED>>>>", order_details)
+            logger.info(f'COMPLETED A BUY FOR>>> {symbol}', extra={
+                        "custom_dimensions": order_details})
             return order_details
         except Exception as e:
-            print("Buy Exception>>>>", dict(request=e.request,
-                  response=e.response.__dict__, exception=e.__dict__))
+            properties = {'custom_dimensions': dict(
+                request=e.request, response=e.response.__dict__, exception=e.__dict__)}
+            logger.exception(
+                f'ERROR OCCURED BUYING>>> {symbol}', extra=properties)
+            logger.warning(f'FAILED A BUY FOR>>> {symbol}')
 
     @classmethod
     def sell_order(cls, symbol):
         try:
+            logger.info(f'ATTEMPTING A SELL FOR>>> {symbol}')
             coin = symbol.split("USDT")[0]
             coin_balance = BinanceClient.get_asset_balance(
                 asset=coin).get("free")
@@ -55,9 +59,7 @@ class Wallet:
             step_size = float(symbol_info['filters'][2]['stepSize'])
             precision = int(round(-math.log(step_size, 10), 0))
             coin_balance = float(coin_balance)
-            # print("coin_balance>>>", coin_balance)
             final_quantity = round(coin_balance, precision)
-            # print("final_quantity>>>", final_quantity)
 
             order_details = BinanceClient.create_order(
                 symbol=symbol,
@@ -66,24 +68,24 @@ class Wallet:
                 quantity=final_quantity
             )
 
-            # from flask_mail import Message
-            # msg = Message("Hello", sender="alerts@chc.capial", recipients=["j3bsie@gmail.com"], body="SELL ORDER COMPLETED>>>>")
-            # mail.send(msg)
-
-            print("SELL ORDER COMPLETED>>>>", order_details)
+            logger.info(f'COMPLETED A SELL FOR>>> {symbol}', extra={
+                        "custom_dimensions": order_details})
             return order_details
         except Exception as e:
-            print("Sell Exception>>>>", e.__dict__)
+            properties = {'custom_dimensions': dict(
+                request=e.request, response=e.response.__dict__, exception=e.__dict__)}
+            logger.exception(
+                f'ERROR OCCURED SELLING>>> {symbol}', extra=properties)
             max_allowed_qty = round(final_quantity * 0.998, precision)
             next_coin_value = round(coin_balance * 0.999, precision)
 
             if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
+                logger.warning(f'ERROR TYPE>>> {e.message}')
                 retry_status = True
                 while retry_status:
                     try:
-                        print(
+                        logger.info(
                             f"RETYING SELL ORDER WITH {next_coin_value} which is {round((next_coin_value/coin_balance) * 100, 2)}% of {coin_balance}")
-
                         order_details = BinanceClient.create_order(
                             symbol=symbol,
                             side=SIDE_SELL,
@@ -93,28 +95,34 @@ class Wallet:
 
                         retry_status = False
 
-                        print(
+                        logger.info(
                             f"SELL ORDER COMPLETED WITH {round((next_coin_value/coin_balance) * 100, 2)}% of {coin_balance} which is {next_coin_value}>>>")
 
-                        print("SELL ORDER COMPLETED WITH>>>", order_details)
+                        logger.info(f'COMPLETED A SELL FOR>>> {symbol}', extra={
+                                    "custom_dimensions": order_details})
 
                         return order_details
                     except:
                         if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
-                            print("RECOMPUTING COIN VALUE>>>")
+                            logger.info("RECOMPUTING COIN VALUE>>>")
                             next_coin_value = round(
                                 next_coin_value * 0.999, precision)
                             if next_coin_value <= max_allowed_qty:
-                                # retry_status = False
                                 # Send mail to hugo about failed retry status
-                                print("STOP RETRY>>>>")
+                                logger.info(
+                                    f"STOPPED RETRY LOGIC - WE CANNOT GO MORE THAN {max_allowed_qty} CURRENTLY {next_coin_value}>>>")
                                 break
 
             if e.status_code >= 500:
                 # Implement 3 trials
                 # Send mail to hugo about binana
-                print("Sell Exception>>>>", e.__dict__)
+                logger.exception(
+                    f'ERROR OCCURED SELLING>>> {symbol}', extra=properties)
 
+    @classmethod
+    def retry_sell_order(cls, symbol):
+        # Todo - Extract retry logic to this function
+        pass
 
 # from utils.wallet_helper import Wallet, BinanceClient
 # buy_order_details = Wallet.buy_order(symbol=f"ETCUSDT")

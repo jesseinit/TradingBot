@@ -1,7 +1,10 @@
 from flask_mail import Message
 from main import mail
 from datetime import datetime
-import json
+from decouple import config
+
+ALLOWED_MAILS = config('MAIL_ADDRS', cast=lambda emails: [
+    email.strip() for email in emails.split(',')])
 
 
 class MailHelper:
@@ -21,7 +24,7 @@ class MailHelper:
         </html>
         """
         msg = Message("Incoming AI Data",
-                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      recipients=ALLOWED_MAILS,
                       html=ai_incoming_data_template)
         mail.send(msg)
 
@@ -47,7 +50,7 @@ class MailHelper:
         </html>
         """
         msg = Message(f"Successfully Bought {order_details['symbol']} at {order_details['fills'][0]['price']}",
-                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      recipients=ALLOWED_MAILS,
                       html=email_template)
         mail.send(msg)
 
@@ -73,7 +76,7 @@ class MailHelper:
         </html>
         """
         msg = Message(f"Successfully Sold {order_details['symbol']} at {order_details['fills'][0]['price']}",
-                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      recipients=ALLOWED_MAILS,
                       html=email_template)
         mail.send(msg)
 
@@ -90,6 +93,6 @@ class MailHelper:
         </html>
         """
         msg = Message(f"Error Occured",
-                      recipients=["jesse@chc.capital", "hugo@chc.capital"],
+                      recipients=ALLOWED_MAILS,
                       html=email_template)
         mail.send(msg)
