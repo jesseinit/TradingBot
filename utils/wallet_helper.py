@@ -77,7 +77,7 @@ class Wallet:
             max_allowed_qty = round(final_quantity * 0.998, precision)
             next_coin_value = round(coin_balance * 0.999, precision)
 
-            if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
+            if e.message in ['Account has insufficient balance for requested action.', 'Filter failure: LOT_SIZE']:
                 logger.warning(f'ERROR TYPE>>> {e.message}')
                 retry_status = True
                 while retry_status:
@@ -101,7 +101,7 @@ class Wallet:
 
                         return order_details
                     except:
-                        if e.message == 'Filter failure: LOT_SIZE' or e.message == 'Account has insufficient balance for requested action.':
+                        if e.message in ['Account has insufficient balance for requested action.', 'Filter failure: LOT_SIZE']:
                             logger.info("RECOMPUTING COIN VALUE>>>")
                             next_coin_value = round(
                                 next_coin_value * 0.999, precision)

@@ -19,7 +19,9 @@ def ai_listener():
     try:
         ai_response = request.get_json(force=True)
         coin_signal = ai_response.get('data')[0]
-        coin_name, trigger_name, price = coin_signal.keys()
+        logger.info(f'INCOMING AI DATA>>>>{json.dumps(coin_signal)}')
+        # others = ['price']
+        coin_name, trigger_name, *others = coin_signal.keys()
         recieved_at = datetime.now()
 
         incoming_log_instance = IncomingCoinLog(
@@ -37,9 +39,6 @@ def ai_listener():
             "trigger2": True if trigger_name == "trigger2" and coin_signal[
                 trigger_name] == "TRUE" else False
         }
-
-        logger.info(
-            f'INCOMING AI DATA>>> COIN_NAME:{coin_signal[coin_name]} SIGNAL:{trigger_name} VALUE:{signal_type[trigger_name]}')
 
         if not coin_instance:
             # Create the coin record for the first time
@@ -102,7 +101,6 @@ def ai_listener():
                 return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
 
         if trigger_state == "SELL":
-
             sell_order_details = Wallet.sell_order(
                 symbol=f"{coin_state_instance.coin_name.upper()}USDT")
             if sell_order_details:
