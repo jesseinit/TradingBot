@@ -7,18 +7,24 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from werkzeug.exceptions import HTTPException
+from celery import Celery
 
 from config import config as app_config
 from decouple import config
 
 logger = logging.getLogger(__name__)
-logger.addHandler(AzureLogHandler(
-    connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"))
+logger.addHandler(
+    AzureLogHandler(
+        connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"
+    ))
 logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
+celery = Celery(__name__,
+                result_backend=config("REDIS_URL"),
+                broker=config("REDIS_URL"))
 
 
 def create_app(config_name: str = "developement"):
@@ -34,6 +40,7 @@ def create_app(config_name: str = "developement"):
     db.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
+    celery.conf.update(app.config)
 
     from blueprints.listener.listener_blueprint import listener_blueprint
     from blueprints.wallet.wallet_blueprint import wallet_blueprint
@@ -46,7 +53,10 @@ def create_app(config_name: str = "developement"):
         """Error handler called when a BinanceAPIException Exception is raised"""
         from utils.mail_helper import MailHelper
         MailHelper.send_exception_mail(error.message)
-        return {"message": error.message, "code": error.code}, getattr(error, 'status_code', 500)
+        return {
+            "message": error.message,
+            "code": error.code
+        }, getattr(error, 'status_code', 500)
 
     def handle_error(error):
         code = 500
