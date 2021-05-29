@@ -19,7 +19,7 @@ def ai_listener():
     try:
         ai_response = request.get_json(force=True)
         coin_signal = ai_response.get('data')[0]
-        logger.info(f'INCOMING AI DATA>>>>{json.dumps(coin_signal)}')
+        logger.info(f'INCOMING AI DATA>>>>{json.dumps(ai_response)}')
         # others = ['price']
         coin_name, trigger_name, *others = coin_signal.keys()
         recieved_at = datetime.now()
@@ -136,7 +136,7 @@ def ai_listener():
 
             return {"status": "response recieved", "data": order_data['fills'] if order_data else None}
     except Exception as e:
-        logger.exception(
-            f'Error Occured Processing Incoming AI Data', exc_info=e)
+        logger.exception(f'Error Occured Processing Incoming AI Data',
+                         exc_info=e, extra={"custom_dimensions": {"ai_data": json.dumps(ai_response)}})
 
     return {"status": "response recieved"}
