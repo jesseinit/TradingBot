@@ -6,6 +6,10 @@ dev:
 	@echo "Staring Up Dev Server"
 	flask run -p 8000
 
+worker:
+	@echo "Staring Up Celery"
+	celery -A celery_worker.celery worker --loglevel=INFO
+
 test:
 	@echo "Running Tests"
 	source .env && pytest -vs

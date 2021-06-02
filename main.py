@@ -8,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from werkzeug.exceptions import HTTPException
 from celery import Celery
+from flask_marshmallow import Marshmallow
 
 from config import config as app_config
 from decouple import config
@@ -20,6 +21,7 @@ logger.addHandler(
 logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy()
+ma = Marshmallow()
 migrate = Migrate()
 mail = Mail()
 celery = Celery(__name__,
@@ -38,6 +40,7 @@ def create_app(config_name: str = "developement"):
     app = Flask(__name__)
     app.config.from_object(app_config[config_name])
     db.init_app(app)
+    ma.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
     celery.conf.update(app.config)

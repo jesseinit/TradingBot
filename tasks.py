@@ -1,7 +1,89 @@
-from main import celery
+from datetime import datetime
+from decouple import config
+from utils.wallet_helper import Wallet
+from main import celery, logger
+from utils.mail_helper import MailHelper
+
+ALLOWED_MAILS = config(
+    'MAIL_ADDRS',
+    cast=lambda emails: [email.strip() for email in emails.split(',')])
 
 
-@celery.task(name='task.greet_user')
-def greet():
-    print("Task Called >>>>>")
-    return "Task Called"
+@celery.task(bind=True, name='task.check_order_status')
+def check_order_status(self, symbol: str = None, order_id: str = None):
+    """ This task runs a check to see if a buy order has been filled or not """
+    # logger.info("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
+    print("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
+    # Check order and get state
+    try:
+        order_details = Wallet.retrive_order_details(symbol, order_id)
+        print("order_details inside task>>>", order_details)
+        if order_details and order_details['status'] != "FILLED":
+            Wallet.cancel_order(symbol, order_id)
+            return 'Order Cancelled'
+
+        if order_details and order_details['status'] == "FILLED":
+            # Todo - Get Coin and set is_holding to true
+            from blueprints.listener.listener_models import CoinState
+            from blueprints.wallet.wallet_models import TransactionsAudit
+            coin_name = symbol.split("USDT")[0]
+            coin_instance = CoinState.query.filter_by(
+                coin_name=coin_name).first()
+            if coin_instance:
+                coin_instance.update(is_holding=True)
+
+            # coin_state_instance.update(is_holding=True)
+            # Todo - Create TransactionsAudit record and set coin holding state to True
+            TransactionsAudit(
+                occured_at=datetime .fromtimestamp(
+                    int(str(order_details['time'])[:10])),
+                symbol=order_details['symbol'],
+                client_order_id=order_details['orderId'],
+                orig_qty=order_details['origQty'],
+                executed_qty=order_details['executedQty'],
+                cummulative_quote_qty=order_details[
+                    'cummulativeQuoteQty'],
+                order_status=order_details['status'],
+                time_in_force=order_details['timeInForce'],
+                order_type=order_details['type'],
+                side=order_details['side'],
+                fills=[]).save()
+
+            print("ORDER HAS BEEN FILLED>>>")
+            return 'Order Filled'
+    except Exception as e:
+        print("e>>>", e)
+        # if e.msg == "Unknown order sent.":
+        #     pass
+        raise self.retry(exc=e, countdown=1, max_retries=3)
+
+    # If state has not been filled, cancel order
+    print("BACKGROUND CHECK COMPLETED>>>")
+
+
+@celery.task(bind=True, name='mail.send_ai_incoming_mail')
+def send_ai_incoming_mail(self, *args, **kwargs):
+    try:
+        return MailHelper.send_ai_incoming_mail(*args, **kwargs)
+    except Exception as e:
+        raise self.retry(exc=e, countdown=1, max_retries=1)
+
+
+@celery.task(name='mail.send_success_buy_mail')
+def send_success_buy_mail(*args, **kwargs):
+    return MailHelper.send_success_buy_mail(*args, **kwargs)
+
+
+@celery.task(name='mail.send_success_sell_mail')
+def send_success_sell_mail(*args, **kwargs):
+    return MailHelper.send_success_sell_mail(*args, **kwargs)
+
+
+@celery.task(name='mail.send_cancel_mail')
+def send_cancel_mail(*args, **kwargs):
+    return MailHelper.send_cancel_mail(*args, **kwargs)
+
+
+@celery.task(name='mail.send_exception_mail')
+def send_exception_mail(*args, **kwargs):
+    return MailHelper.send_exception_mail(*args, **kwargs)

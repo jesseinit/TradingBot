@@ -1,7 +1,7 @@
 import math
-
+import json
 from binance.client import Client
-from binance.enums import ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
+from binance.enums import ORDER_TYPE_LIMIT, ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
 from main import logger
 
@@ -15,7 +15,8 @@ BinanceClient = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
 class Wallet:
     """ Manages all operations to be performed on a binance wallet """
 
-    WALLET_COINS = ["BTC", "USDT", "ETH", "XLM", "LINK", "ADA", "ETC", "BCH"]
+    WALLET_COINS = ["USDT", "ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
+    VALID_COINS = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
 
     @classmethod
     def retrieve_coin_balance(cls, coin: str = "USDT"):
@@ -23,31 +24,159 @@ class Wallet:
         coins_details = BinanceClient.get_asset_balance(asset=coin)
         return coins_details
 
+    # @classmethod
+    # def buy_order(cls, symbol):
+    #     try:
+    #         logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
+    #         wallet_balance = BinanceClient.get_asset_balance(
+    #             asset="USDT").get("free")
+    #         wallet_balance = float(wallet_balance)
+    #         order_details = BinanceClient.create_order(
+    #             symbol=symbol,
+    #             side=SIDE_BUY,
+    #             type=ORDER_TYPE_MARKET,
+    #             quoteOrderQty=wallet_balance)
+    #         logger.info(f'COMPLETED A BUY FOR>>> {symbol}',
+    #                     extra={"custom_dimensions": order_details})
+    #         return order_details
+    #     except Exception as e:
+    #         properties = {
+    #             'custom_dimensions':
+    #             dict(request=e.request,
+    #                  response=e.response.__dict__,
+    #                  exception=e.__dict__)
+    #         }
+    #         logger.exception(f'ERROR OCCURED BUYING>>> {symbol}',
+    #                          extra=properties)
+    #         logger.warning(f'FAILED A BUY FOR>>> {symbol}')
+
     @classmethod
-    def buy_order(cls, symbol):
+    def buy_limit_order(cls, symbol, price):
+        # ? if exhaust_balance is False use 50% - it means that we are not currently holding any coin so lets use halve of our balance
+        # ? if exhaust_balance is True use 100% - it means that we are currently holding a coin and we should use 100%(the remaining 50%) of the wallet
+        from tasks import check_order_status
         try:
             logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
-            wallet_balance = BinanceClient.get_asset_balance(
-                asset="USDT").get("free")
-            wallet_balance = float(wallet_balance)
-            order_details = BinanceClient.create_order(
-                symbol=symbol,
-                side=SIDE_BUY,
-                type=ORDER_TYPE_MARKET,
-                quoteOrderQty=wallet_balance)
-            logger.info(f'COMPLETED A BUY FOR>>> {symbol}',
-                        extra={"custom_dimensions": order_details})
-            return order_details
+            wallet_status = BinanceClient.get_asset_balance(asset="USDT")
+            wallet_free_balance = wallet_status.get("free")
+            print("wallet_free_balance>>>", wallet_free_balance)
+            wallet_locked_balance = wallet_status.get("locked")
+
+            symbol_info = BinanceClient.get_symbol_info(symbol=symbol)
+            # print("symbol_info>>>", symbol_info)
+
+            tick_size = float(symbol_info['filters'][0]['tickSize'])
+            print("tick_size>>", tick_size)
+
+            step_size = float(symbol_info['filters'][2]['stepSize'])
+
+            precision = int(round(-math.log(step_size, 10), 0))
+
+            minimum_buy_quantity = round(
+                float(symbol_info['filters'][2]['minQty']), precision)
+            print("minimum_qty>>", minimum_buy_quantity)
+
+            min_allowed_coin_amount = float(
+                symbol_info['filters'][3]['minNotional'])
+            print("min_allowed_coin_amount>>>", min_allowed_coin_amount)
+
+            wallet_locked_balance = round(
+                float(wallet_locked_balance), precision)
+
+            print("wallet_frozen_balance>>>>", wallet_locked_balance)
+
+            # ? - We are using only 99.90 of our wallet balance
+            wallet_free_balance = round(
+                float(wallet_free_balance) * 0.999, precision)
+            print("100% of Free Balance>>", wallet_free_balance)
+
+            wallet_free_balance = wallet_free_balance * 0.5
+            print("50% of Free Balance>>", wallet_free_balance)
+
+            # Todo - when order was filled in the background and a new buy order came and we dont have any locked balance, we want to still use 100%. the currentt behaviour right now its going to use 50% since locked_balance (0) is not greater than min_allowed_coin_amount(10)
+            if wallet_locked_balance >= min_allowed_coin_amount:
+                # ? Use 100% of our 50% balance
+                wallet_free_balance = round(
+                    float(wallet_status.get("free")) * 0.999, precision)
+                logger.info(
+                    f'"USE 100% of free balance which is {wallet_free_balance} since a coin has been bought')
+                print(
+                    "USE 100% of Free Balance since a coin has been bought>>", wallet_free_balance)
+
+            print("final_wallet_balance>>>", wallet_free_balance)
+
+            # ? - Check to see that wallet_free_balance has enough balance to process the order
+            if wallet_free_balance < min_allowed_coin_amount:
+                logger.info(
+                    f'Buy Order For {symbol} Aborted - Insufficient Wallet Balance at {wallet_free_balance}'
+                )
+                print("We dont have enough to make this order")
+                return None
+
+            # ? - At most any splitted order buy upto 5k worth or coins
+            max_order_amount = config('MAX_ORDER_AMOUNT_PER_ORDER',
+                                      cast=float,
+                                      default=5000.0)
+
+            # ? - The price we are willing to buy the coin at
+            quoted_price = round(float(price), precision)
+
+            # ? - The number of order splits we want to have
+            order_iteration = int(wallet_free_balance / max_order_amount)
+            print("order_iteration>>>", order_iteration)
+
+            # ? - This loop generates amounts that each of the split order is goint to have
+            buy_order_amounts = []
+            for _ in range(order_iteration):
+                # ? - Ensuring we dont go more than a certain limit
+                if max_order_amount >= min_allowed_coin_amount:
+                    buy_order_amounts.append(round(max_order_amount,
+                                                   precision))
+                    wallet_free_balance = wallet_free_balance - max_order_amount
+
+                # ? - Ensuring we cater for amount that is less than the max order amount but still enough to better utilize our wallet balance
+                if wallet_free_balance > min_allowed_coin_amount and max_order_amount > wallet_free_balance:
+                    buy_order_amounts.append(
+                        round(wallet_free_balance, precision))
+
+            print("buy_order_amounts>>>>", buy_order_amounts)
+            print("wallet_free_balance>>>>", wallet_free_balance)
+
+            completed_orders = []
+            for order_amount in buy_order_amounts:
+                current_buy_quantity = round(order_amount / quoted_price,
+                                             precision)
+
+                # ? - Why are we incrementing the quoted price with the tick size
+                quoted_price = round(quoted_price + tick_size, precision)
+                print("current_buy_quantity>>>", current_buy_quantity)
+                print("quoted_price>>>", quoted_price)
+
+                try:
+                    order_details = BinanceClient.order_limit_buy(
+                        symbol=symbol,
+                        quantity=current_buy_quantity,
+                        price=quoted_price)
+                    if order_details:
+                        check_order_status.apply_async(kwargs={
+                            "symbol":
+                            symbol,
+                            'order_id':
+                            order_details.get('orderId')
+                        }, countdown=config('BG_DELAY', default=300, cast=int)
+                        )
+                        completed_orders.append(order_details)
+                except Exception as e:
+                    print("exception in for loop>>>", e)
+                    logger.exception(
+                        f'ERROR OCCURED BUYING - INSIDE LOOP>>> {symbol}', exc_info=e)
+                    continue
+
+            return completed_orders
+
         except Exception as e:
-            properties = {
-                'custom_dimensions':
-                dict(request=e.request,
-                     response=e.response.__dict__,
-                     exception=e.__dict__)
-            }
-            logger.exception(f'ERROR OCCURED BUYING>>> {symbol}',
-                             extra=properties)
-            logger.warning(f'FAILED A BUY FOR>>> {symbol}')
+            print("exception>>>", e)
+            logger.exception(f'ERROR OCCURED BUYING>>> {symbol}', exc_info=e)
 
     @classmethod
     def sell_order(cls, symbol):
@@ -125,6 +254,19 @@ class Wallet:
                                  extra=properties)
 
     @classmethod
-    def retry_sell_order(cls, symbol):
-        # Todo - Extract retry logic to this function
-        pass
+    def cancel_order(cls, symbol, order_id):
+        logger.info(f"ATTEMPTING TO CANCEL THE ORDER WITH ID >>> {order_id}")
+        cancelled_order = BinanceClient.cancel_order(symbol=symbol,
+                                                     orderId=order_id)
+        with open("cancelled_orders.log", 'a') as cancel_log:
+            cancel_log.write(f"{json.dumps(cancelled_order)}\n\n")
+        logger.info(f"CANCELLED THE ORDER WITH ID >>> {order_id} CANCELLED")
+        return cancelled_order
+
+    @classmethod
+    def retrive_order_details(cls, symbol, order_id):
+        logger.info(f"ATTEMPTING TO RETRIEVE THE ORDER WITH ID >>>{order_id}")
+        order_details = BinanceClient.get_order(symbol=symbol,
+                                                orderId=order_id)
+        logger.info(f"RETRIEVED THE ORDER WITH ID >>>{order_id}")
+        return order_details

@@ -38,6 +38,6 @@ class ProductionConfig(Config):
     SQLALCHEMY_ECHO = False
 
 
-config = dict(
-    development=DevelopmentConfig, test=TestingConfig, production=ProductionConfig
-)
+config = dict(development=DevelopmentConfig,
+              test=TestingConfig,
+              production=ProductionConfig)
