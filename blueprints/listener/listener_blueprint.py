@@ -169,6 +169,7 @@ def ai_listener():
 
     except Exception as e:
         print("eException>>>", e)
+        ai_response = request.get_json(force=True)
         logger.exception(
             f'Error Occured Processing Incoming AI Data',
             exc_info=e,
