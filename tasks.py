@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from decouple import config
 from utils.wallet_helper import Wallet
 from main import celery, logger
@@ -10,7 +11,7 @@ ALLOWED_MAILS = config(
 
 
 @celery.task(bind=True, name='task.check_order_status')
-def check_order_status(self, symbol: str = None, order_id: str = None):
+def check_order_status(self, mode: Literal['12h', '5m'] = None, symbol: str = None, order_id: str = None):
     """ This task runs a check to see if a buy order has been filled or not """
     # logger.info("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
     print("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
@@ -24,13 +25,19 @@ def check_order_status(self, symbol: str = None, order_id: str = None):
 
         if order_details and order_details['status'] == "FILLED":
             # Todo - Get Coin and set is_holding to true
-            from blueprints.listener.listener_models import CoinState
+            from blueprints.listener.listener_models import CoinState, FiveMinsCoinState
             from blueprints.wallet.wallet_models import TransactionsAudit
             coin_name = symbol.split("USDT")[0]
-            coin_instance = CoinState.query.filter_by(
-                coin_name=coin_name).first()
-            if coin_instance:
-                coin_instance.update(is_holding=True)
+            if mode == '12h':
+                coin_instance = CoinState.query.filter_by(
+                    coin_name=coin_name).first()
+                if coin_instance:
+                    coin_instance.update(is_holding=True)
+            elif mode == '5m':
+                coin_instance = FiveMinsCoinState.query.filter_by(
+                    coin_name=coin_name).first()
+                if coin_instance:
+                    coin_instance.update(is_holding=True)
 
             # coin_state_instance.update(is_holding=True)
             # Todo - Create TransactionsAudit record and set coin holding state to True

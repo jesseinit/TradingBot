@@ -1,5 +1,6 @@
 import math
 import json
+from typing import Literal
 from binance.client import Client
 from binance.enums import ORDER_TYPE_LIMIT, ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
 from decouple import config
@@ -16,7 +17,8 @@ class Wallet:
     """ Manages all operations to be performed on a binance wallet """
 
     WALLET_COINS = ["USDT", "ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
-    VALID_COINS = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
+    VALID_COINS_12H = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
+    VALID_COINS_5M = ["XLM", "BTC", "LINK", "ETH", "ADA", "ETC"]
 
     @classmethod
     def retrieve_coin_balance(cls, coin: str = "USDT"):
@@ -51,7 +53,7 @@ class Wallet:
     #         logger.warning(f'FAILED A BUY FOR>>> {symbol}')
 
     @classmethod
-    def buy_limit_order(cls, symbol, price):
+    def buy_limit_order(cls, symbol, price, mode: Literal['12h', '5m']):
         # ? if exhaust_balance is False use 50% - it means that we are not currently holding any coin so lets use halve of our balance
         # ? if exhaust_balance is True use 100% - it means that we are currently holding a coin and we should use 100%(the remaining 50%) of the wallet
         from tasks import check_order_status
@@ -159,10 +161,11 @@ class Wallet:
                         price=quoted_price)
                     if order_details:
                         check_order_status.apply_async(kwargs={
+                            "mode": mode,
                             "symbol":
                             symbol,
                             'order_id':
-                            order_details.get('orderId')
+                            order_details.get('orderId'),
                         }, countdown=config('BG_DELAY', default=300, cast=int)
                         )
                         completed_orders.append(order_details)
