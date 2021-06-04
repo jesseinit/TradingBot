@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from blueprints.listener.listener_models import CoinState, IncomingCoinLog
-from blueprints.listener.listener_serializer import AIDataTwelveHrsChartSchema, AISchema
+from blueprints.listener.listener_serializer import AIDataSchema
 from blueprints.wallet.wallet_models import TransactionsAudit
 from flask import Blueprint, request
 from main import logger
@@ -24,11 +24,13 @@ def ai_listener():
         logger.info(f'INCOMING AI DATA>>>>{json.dumps(ai_response)}')
         # keys_count = len(coin_signal.keys())
 
-        # print("keys_count>>", keys_count)
+        print("coin_signal>>", coin_signal)
         # signal_mode = 'twelve_hrs_candle' if keys_count == 6 else 'five_mins_candle'
 
         # print("schema_type>>", signal_mode)
-        coin_signal = AIDataTwelveHrsChartSchema().load(coin_signal)
+        coin_signal = AIDataSchema().load(coin_signal)
+
+        # return {"status": "response recieved", "coin_signal": coin_signal}
 
         recieved_at = datetime.now()
 
@@ -88,7 +90,8 @@ def ai_listener():
             coin_name=coin_signal.get('coin')).first()
 
         # Compute coin trigger state
-        trigger_state = coin_state_instance.compute_trigger_state()
+        trigger_state = coin_state_instance.compute_trigger_state(
+            chart_mode=coin_signal.get("time"))
         print("trigger_state>>>>", trigger_state)
 
         # return {"status": "response recieved", "data": coin_signal}

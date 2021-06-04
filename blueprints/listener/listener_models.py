@@ -36,9 +36,9 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
     is_holding = db.Column(db.Boolean, index=True,
                            default=False, nullable=True)
 
-    def compute_trigger_state(self, chart_mode: Literal['twelve_hrs_chart', "five_mins_chart"] = 'twelve_hrs_chart'):
+    def compute_trigger_state(self, chart_mode: Literal['12h', "5m"] = '12h'):
         # ? We buy when any of the triggers is true for the valid coins and we are not holding the coin
-        if chart_mode == "twelve_hrs_chart":
+        if chart_mode == "12h":
             if self.coin_name in Wallet.VALID_COINS and any([
                     self.trigger_one_status, self.trigger_two_status,
                     self.trigger_three_status, self.trigger_four_status]) and self.is_holding is False:
@@ -53,18 +53,18 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
                 return "SELL"
 
         # ? Use this for the previous logic(5mins timeline)
-        # if chart_mode == "five_mins_chart":
-        #     if self.coin_name in Wallet.VALID_COINS and all([self.trigger_one_status is True, self.trigger_two_status is True, self.is_holding is False]):
-        #         return "BUY"
+        if chart_mode == "5m":
+            if all([self.trigger_one_status is True, self.trigger_two_status is True, self.is_holding is False]):
+                return "BUY"
 
-        #     if self.coin_name in Wallet.VALID_COINS and self.trigger_one_status is False and self.trigger_two_status is True and self.is_holding is True:
-        #         return "SELL"
+            if self.trigger_one_status is False and self.trigger_two_status is True and self.is_holding is True:
+                return "SELL"
 
-        #     if self.coin_name in Wallet.VALID_COINS and self.trigger_one_status is True and self.trigger_two_status is False and self.is_holding is True:
-        #         return "SELL"
+            if self.trigger_one_status is True and self.trigger_two_status is False and self.is_holding is True:
+                return "SELL"
 
-        #     if self.coin_name in Wallet.VALID_COINS and all([self.trigger_one_status is False or self.trigger_two_status is False]) and self.is_holding is True:
-        #         return "SELL"
+            if all([self.trigger_one_status is False or self.trigger_two_status is False]) and self.is_holding is True:
+                return "SELL"
 
     @classmethod
     def currently_held_coins(cls):

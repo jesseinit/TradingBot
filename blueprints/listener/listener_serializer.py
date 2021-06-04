@@ -1,31 +1,21 @@
 import json
-from marshmallow import Schema, fields, post_load, validates
-from marshmallow_oneofschema import OneOfSchema
+from marshmallow import Schema, fields, pre_load
+from marshmallow.decorators import pre_load
+from marshmallow.validate import OneOf
 
-# ? {"coin": "ADA", "trigger1": "TRUE", "trigger2": "TRUE", "trigger3": "TRUE", "trigger4": "TRUE", "price": 1.5001}
 
-
-class AIDataFiveMinsChartSchema(Schema):
+class AIDataSchema(Schema):
     coin = fields.Str()
-    trigger1 = fields.Str()
-    trigger2 = fields.Str()
+    time = fields.String(missing='12h', validate=OneOf(
+        ["5m", "12h"]))
+    trigger1 = fields.Bool()
+    trigger2 = fields.Bool()
+    trigger3 = fields.Bool()
+    trigger4 = fields.Bool()
     price = fields.Float()
 
-    @post_load
-    def load(self, data, **kwargs):
-        return data
-
-
-class AIDataTwelveHrsChartSchema(Schema):
-    coin = fields.Str()
-    trigger1 = fields.Str()
-    trigger2 = fields.Str()
-    trigger3 = fields.Str()
-    trigger4 = fields.Str()
-    price = fields.Float()
-
-    @post_load
-    def load(self, data, **kwargs):
+    @pre_load
+    def preload_data(self, data, **kwargs):
         if "trigger1" in data.keys():
             data['trigger1'] = True if data['trigger1'] == 'TRUE' else False
         if "trigger2" in data.keys():
@@ -37,9 +27,9 @@ class AIDataTwelveHrsChartSchema(Schema):
         return data
 
 
-class AISchema(OneOfSchema):
-    type_schemas = {"five_mins_candle": AIDataFiveMinsChartSchema,
-                    "twelve_hrs_candle": AIDataTwelveHrsChartSchema}
+# class AISchema(OneOfSchema):
+#     type_schemas = {"five_mins_candle": AIDataFiveMinsChartSchema,
+#                     "twelve_hrs_candle": AIDataTwelveHrsChartSchema}
 
 # ai_schema = AISchema()
 # ai_data_schema = AIDataTwelveHrsChartSchema()
