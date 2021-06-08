@@ -48,6 +48,7 @@ def ai_listener():
         trigger_mode = coin_signal.get("time")
         coin_state_instance = None
         if trigger_mode == '12h':
+            return {"status": "response recieved", "coin_signal": coin_signal}
             coin_instance = TwelveHrsCoinState.query.filter_by(
                 coin_name=coin_signal.get('coin')).first()
 

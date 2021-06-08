@@ -61,7 +61,8 @@ class Wallet:
             logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")
             wallet_free_balance = wallet_status.get("free")
-            print("wallet_free_balance>>>", wallet_free_balance)
+            logger.info(
+                f"CURRENT FREE WALLET BALANCE >>> {wallet_free_balance}")
             wallet_locked_balance = wallet_status.get("locked")
 
             symbol_info = BinanceClient.get_symbol_info(symbol=symbol)
@@ -208,10 +209,7 @@ class Wallet:
             max_allowed_qty = round(final_quantity * 0.998, precision)
             next_coin_value = round(coin_balance * 0.999, precision)
 
-            if e.message in [
-                    'Account has insufficient balance for requested action.',
-                    'Filter failure: LOT_SIZE'
-            ]:
+            if e.message in ['Account has insufficient balance for requested action.', 'Filter failure: LOT_SIZE']:
                 logger.warning(f'ERROR TYPE>>> {e.message}')
                 retry_status = True
                 while retry_status:

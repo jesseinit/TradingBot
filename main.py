@@ -13,12 +13,18 @@ from flask_marshmallow import Marshmallow
 from config import config as app_config
 from decouple import config
 
+ENV = config("FLASK_ENV", default="development")
+
 logger = logging.getLogger(__name__)
-logger.addHandler(
-    AzureLogHandler(
-        connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"
-    ))
 logger.setLevel(logging.DEBUG)
+if ENV == "production":
+    logger.addHandler(AzureLogHandler(
+        connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"))
+else:
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    log_handler = logging.FileHandler('all.log')
+    log_handler.setFormatter(formatter)
+    logger.addHandler(log_handler)
 
 db = SQLAlchemy()
 ma = Marshmallow()
