@@ -13,14 +13,12 @@ ALLOWED_MAILS = config(
 @celery.task(bind=True, name='task.check_order_status')
 def check_order_status(self, mode: Literal['12h', '5m'] = None, symbol: str = None, order_id: str = None):
     """ This task runs a check to see if a buy order has been filled or not """
-    # logger.info("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
-    print("RUNNING BACKGROUND JOB TO CHECK ORDER STATUS>>>")
-    # Check order and get state
+    logger.info("Running Background Job to Check Order Status >>>")
     try:
         order_details = Wallet.retrive_order_details(symbol, order_id)
-        print("order_details inside task>>>", order_details)
         if order_details and order_details['status'] != "FILLED":
             Wallet.cancel_order(symbol, order_id)
+            logger.info("Check Completed and Order Cancelled >>>")
             return 'Order Cancelled'
 
         if order_details and order_details['status'] == "FILLED":
@@ -39,8 +37,6 @@ def check_order_status(self, mode: Literal['12h', '5m'] = None, symbol: str = No
                 if coin_instance:
                     coin_instance.update(is_holding=True)
 
-            # coin_state_instance.update(is_holding=True)
-            # Todo - Create TransactionsAudit record and set coin holding state to True
             TransactionsAudit(
                 occured_at=datetime .fromtimestamp(
                     int(str(order_details['time'])[:10])),
@@ -55,17 +51,10 @@ def check_order_status(self, mode: Literal['12h', '5m'] = None, symbol: str = No
                 order_type=order_details['type'],
                 side=order_details['side'],
                 fills=[]).save()
-
-            print("ORDER HAS BEEN FILLED>>>")
+            logger.info("Check Completed and Order Filled >>>")
             return 'Order Filled'
     except Exception as e:
-        print("e>>>", e)
-        # if e.msg == "Unknown order sent.":
-        #     pass
         raise self.retry(exc=e, countdown=1, max_retries=3)
-
-    # If state has not been filled, cancel order
-    print("BACKGROUND CHECK COMPLETED>>>")
 
 
 @celery.task(bind=True, name='mail.send_ai_incoming_mail')

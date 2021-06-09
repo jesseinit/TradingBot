@@ -24,7 +24,6 @@ def ai_listener():
         logger.info(f'INCOMING AI DATA>>>>{json.dumps(ai_response)}')
         # keys_count = len(coin_signal.keys())
 
-        print("coin_signal>>", coin_signal)
         # signal_mode = 'twelve_hrs_candle' if keys_count == 6 else 'five_mins_candle'
 
         # print("schema_type>>", signal_mode)
@@ -103,24 +102,17 @@ def ai_listener():
 
         # Compute coin trigger state
         trigger_state = coin_state_instance.compute_trigger_state()
-        print("trigger_state>>>>", trigger_state)
-
+        logger.info(f'Trigger State == {trigger_state}')
         # return {"status": "response recieved", "data": coin_signal}
 
-        # We buy only when we are not holding any coin.
-        # TODO - We should buy with 50% of our wallet when we are not holding any coin and use 100% of our wallet balance when we are current holding a coin
-        # if trigger_state == "BUY" and currently_held_coin is None:
         if trigger_state == "BUY":
-
             buy_order_details = Wallet.buy_limit_order(
                 symbol=f"{coin_state_instance.coin_name.upper()}USDT",
                 price=coin_signal['price'], mode=trigger_mode)
-
             if buy_order_details:
                 # ? We hav to ensure that some orders in buy_order_details have status filled before we set coin to a holding state
                 has_filled_orders = bool(
                     list(filter(lambda order: order['status'] == 'FILLED', buy_order_details)))
-                print("has_filled_orders>>>", has_filled_orders)
                 if has_filled_orders:
                     coin_state_instance.update(is_holding=True)
                 for order_detail in buy_order_details:
@@ -182,7 +174,6 @@ def ai_listener():
             return {"status": "response recieved"}
 
     except Exception as e:
-        print("eException>>>", e)
         ai_response = request.get_json(force=True)
         logger.exception(
             f'Error Occured Processing Incoming AI Data',

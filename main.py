@@ -6,7 +6,6 @@ from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from werkzeug.exceptions import HTTPException
 from celery import Celery
 from flask_marshmallow import Marshmallow
 
@@ -67,17 +66,8 @@ def create_app(config_name: str = "developement"):
             "code": error.code
         }, getattr(error, 'status_code', 500)
 
-    def handle_error(error):
-        code = 500
-        if isinstance(error, HTTPException):
-            code = error.code
-        return jsonify(error='error', code=code)
-
-    for cls in HTTPException.__subclasses__():
-        app.register_error_handler(cls, handle_error)
-
     @app.route("/")
     def hello_world():
-        return "<p>Hello Carina, what do you want to do today?</p>"
+        return "<h1>Hello Carina, what do you want to do today?</h1>"
 
     return app
