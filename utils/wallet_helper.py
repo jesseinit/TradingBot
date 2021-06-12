@@ -165,8 +165,8 @@ class Wallet:
                     logger.exception(
                         f'ERROR OCCURED BUYING - INSIDE LOOP>>> {symbol}', exc_info=e)
                     continue
-            wallet_status = BinanceClient.get_asset_balance(
-                                asset="USDT")['free']
+            wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
+                'free']
             logger.info(f"Wallet Balance After Buy == {wallet_status}")
             return completed_orders
         except Exception as e:
