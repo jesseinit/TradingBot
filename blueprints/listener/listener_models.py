@@ -1,11 +1,7 @@
-# Model to log all incoming coins and their current
-# CoinsStatusModel - id, created_at, updated_at, coin_name, trigger_one_status, trigger_two_status
-
-from typing import Literal, Union
-from utils.wallet_helper import Wallet
 from main import db
 from sqlalchemy import func
 from utils.model_utils import UtilityMixin
+from utils.wallet_helper import Wallet
 
 
 class IncomingCoinLog(UtilityMixin, db.Model):  # type: ignore
@@ -19,7 +15,6 @@ class IncomingCoinLog(UtilityMixin, db.Model):  # type: ignore
     t3 = db.Column(db.Boolean, nullable=True)
     t4 = db.Column(db.Boolean, nullable=True)
     price = db.Column(db.Float, nullable=True)
-    # trigger_status = db.Column(db.Boolean, nullable=False)
 
 
 class CoinState(UtilityMixin, db.Model):  # type: ignore
@@ -50,12 +45,6 @@ class CoinState(UtilityMixin, db.Model):  # type: ignore
                 self.trigger_four_status is False]) and self.is_holding is True:
             return "SELL"
 
-    # @classmethod
-    # def currently_held_coins(cls):
-    #     """ Returns the number of coins we are currently holding(Already bought and waiting to sell) """
-    #     currently_holding = cls.query.filter_by(is_holding=True).all()
-    #     return 0 if currently_holding is None else len(currently_holding)
-
 
 class FiveMinsCoinState(UtilityMixin, db.Model):  # type: ignore
     """ 5min Table """
@@ -69,7 +58,7 @@ class FiveMinsCoinState(UtilityMixin, db.Model):  # type: ignore
     is_holding = db.Column(db.Boolean, index=True,
                            default=False, nullable=True)
 
-    def compute_trigger_state(self, chart_mode: Literal['12h', "5m"] = '12h'):
+    def compute_trigger_state(self):
         if self.coin_name in Wallet.VALID_COINS_5M and all([self.trigger_one_status is True, self.trigger_two_status is True, self.is_holding is False]):
             return "BUY"
 

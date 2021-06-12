@@ -1,8 +1,10 @@
-import math
 import json
+import math
 from typing import Literal
+
 from binance.client import Client
-from binance.enums import ORDER_TYPE_LIMIT, ORDER_TYPE_MARKET, SIDE_BUY, SIDE_SELL
+from binance.enums import ORDER_TYPE_MARKET, SIDE_SELL
+from binance.helpers import round_step_size
 from decouple import config
 from main import logger
 
@@ -16,9 +18,10 @@ BinanceClient = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET)
 class Wallet:
     """ Manages all operations to be performed on a binance wallet """
 
-    WALLET_COINS = ["USDT", "ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
+    WALLET_COINS = ["USDT", "ADA", "BTC", "EOS", "THETA",
+                    "TRX", "ZIL", "XLM", "LINK", "ETH", "ADA", "ETC", "BCH"]
     VALID_COINS_12H = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
-    VALID_COINS_5M = ["XLM", "BTC", "LINK", "ETH", "ADA", "ETC"]
+    VALID_COINS_5M = ["XLM", "BTC", "LINK", "ETH", "ADA", "ETC", "BCH"]
 
     @classmethod
     def retrieve_coin_balance(cls, coin: str = "USDT"):
@@ -62,26 +65,28 @@ class Wallet:
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")
             wallet_free_balance = wallet_status.get("free")
             logger.info(
-                f"CURRENT FREE WALLET BALANCE >>> {wallet_free_balance}")
-            wallet_locked_balance = wallet_status.get("locked")
+                f"Free Wallet Balance == {wallet_free_balance}")
 
             symbol_info = BinanceClient.get_symbol_info(symbol=symbol)
 
             tick_size = float(symbol_info['filters'][0]['tickSize'])
+            logger.info(f'Using Tick Size == {tick_size}')
+
+            price_precision = int(round(-math.log(tick_size, 10), 0))
+            logger.info(f'Using Price Precision == {price_precision}')
 
             step_size = float(symbol_info['filters'][2]['stepSize'])
+            logger.info(f'Using Step Size == {step_size}')
 
-            precision = int(round(-math.log(step_size, 10), 0))
+            qty_precision = int(round(-math.log(step_size, 10), 0))
+            logger.info(f'Using Qty Precision == {price_precision}')
 
             min_allowed_coin_amount = float(
                 symbol_info['filters'][3]['minNotional'])
 
-            wallet_locked_balance = round(
-                float(wallet_locked_balance), precision)
-
             # ? - We are using only 99.90 of our wallet balance
             wallet_free_balance = round(
-                float(wallet_free_balance) * 0.999, precision)
+                float(wallet_free_balance) * 0.999, price_precision)
 
             wallet_free_balance = wallet_free_balance * 0.5
             logger.info(f'Using 50% balance == {wallet_free_balance}')
@@ -90,7 +95,7 @@ class Wallet:
             if BinanceClient.get_open_orders():
                 # ? Use 100% of our 50% balance
                 wallet_free_balance = round(
-                    float(wallet_status.get("free")) * 0.999, precision)
+                    float(wallet_status.get("free")) * 0.999, price_precision)
                 logger.info(f'Using 100% balance == {wallet_free_balance}')
 
             # ? - Check to see that wallet_free_balance has enough balance to process the order
@@ -107,8 +112,8 @@ class Wallet:
             logger.info(f'Maximum Order Amount == {max_order_amount}')
 
             # ? - The price we are willing to buy the coin at
-            quoted_price = round(float(price), precision)
-            logger.info(f'Buying at Price == {quoted_price}')
+            quoted_price = float(price)
+            logger.info(f'Buying at Price == {price}')
 
             # ? - The number of order splits we want to have
             order_iteration = int(wallet_free_balance / max_order_amount)
@@ -118,26 +123,24 @@ class Wallet:
             for _ in range(order_iteration):
                 # ? - Ensuring we dont go more than a certain limit
                 if max_order_amount >= min_allowed_coin_amount:
-                    buy_order_amounts.append(round(max_order_amount,
-                                                   precision))
+                    buy_order_amounts.append(
+                        round(max_order_amount, price_precision))
                     wallet_free_balance = wallet_free_balance - max_order_amount
 
                 # ? - Ensuring we cater for amount that is less than the max order amount but still enough to better utilize our wallet balance
                 if wallet_free_balance > min_allowed_coin_amount and max_order_amount > wallet_free_balance:
                     buy_order_amounts.append(
-                        round(wallet_free_balance, precision))
+                        round(wallet_free_balance, price_precision))
 
             logger.info(f'Split Order Amounts == {buy_order_amounts}')
-            logger.info(
-                f'Splited Wallet Balance After Buy == {wallet_free_balance}')
 
             completed_orders = []
             for order_amount in buy_order_amounts:
-                current_buy_quantity = round(order_amount / quoted_price,
-                                             precision)
+                current_buy_quantity = round(
+                    order_amount / quoted_price, qty_precision)
 
                 # ? - Why are we incrementing the quoted price with the tick size
-                quoted_price = round(quoted_price + tick_size, precision)
+                quoted_price = round(quoted_price + tick_size, price_precision)
                 logger.info(f'Split Order Qty == {current_buy_quantity}')
                 logger.info(f'Split Order Price == {quoted_price}')
 
@@ -162,6 +165,9 @@ class Wallet:
                     logger.exception(
                         f'ERROR OCCURED BUYING - INSIDE LOOP>>> {symbol}', exc_info=e)
                     continue
+            wallet_status = BinanceClient.get_asset_balance(
+                                asset="USDT")['free']
+            logger.info(f"Wallet Balance After Buy == {wallet_status}")
             return completed_orders
         except Exception as e:
             logger.exception(f'ERROR OCCURED BUYING>>> {symbol}', exc_info=e)
@@ -253,3 +259,10 @@ class Wallet:
                                                 orderId=order_id)
         logger.info(f"Retrieved Order >>> {order_id}")
         return order_details
+
+    @classmethod
+    def float_precision(cls, f, n):
+        n = int(math.log10(1 / float(n)))
+        f = math.floor(float(f) * 10 ** n) / 10 ** n
+        f = "{:0.0{}f}".format(float(f), n)
+        return float(int(f)) if int(n) == 0 else float(f)

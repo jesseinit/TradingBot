@@ -102,7 +102,8 @@ def ai_listener():
 
         # Compute coin trigger state
         trigger_state = coin_state_instance.compute_trigger_state()
-        logger.info(f'Trigger State == {trigger_state}')
+        logger.info(
+            f'Trigger State for {coin_signal.get("coin")} == {trigger_state}')
         # return {"status": "response recieved", "data": coin_signal}
 
         if trigger_state == "BUY":
