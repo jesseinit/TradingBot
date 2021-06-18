@@ -1,10 +1,10 @@
 import json
 import math
+import time
 from typing import Literal
 
 from binance.client import Client
 from binance.enums import ORDER_TYPE_MARKET, SIDE_SELL
-from binance.helpers import round_step_size
 from decouple import config
 from main import logger
 
@@ -22,6 +22,8 @@ class Wallet:
                     "TRX", "ZIL", "XLM", "LINK", "ETH", "ADA", "ETC", "BCH"]
     VALID_COINS_12H = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
     VALID_COINS_5M = ["XLM", "BTC", "LINK", "ETH", "ADA", "ETC", "BCH"]
+    MAX_RETRYS = 3
+    CURRENT_RETRY = 0
 
     @classmethod
     def retrieve_coin_balance(cls, coin: str = "USDT"):
@@ -29,38 +31,16 @@ class Wallet:
         coins_details = BinanceClient.get_asset_balance(asset=coin)
         return coins_details
 
-    # @classmethod
-    # def buy_order(cls, symbol):
-    #     try:
-    #         logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
-    #         wallet_balance = BinanceClient.get_asset_balance(
-    #             asset="USDT").get("free")
-    #         wallet_balance = float(wallet_balance)
-    #         order_details = BinanceClient.create_order(
-    #             symbol=symbol,
-    #             side=SIDE_BUY,
-    #             type=ORDER_TYPE_MARKET,
-    #             quoteOrderQty=wallet_balance)
-    #         logger.info(f'COMPLETED A BUY FOR>>> {symbol}',
-    #                     extra={"custom_dimensions": order_details})
-    #         return order_details
-    #     except Exception as e:
-    #         properties = {
-    #             'custom_dimensions':
-    #             dict(request=e.request,
-    #                  response=e.response.__dict__,
-    #                  exception=e.__dict__)
-    #         }
-    #         logger.exception(f'ERROR OCCURED BUYING>>> {symbol}',
-    #                          extra=properties)
-    #         logger.warning(f'FAILED A BUY FOR>>> {symbol}')
-
     @classmethod
     def buy_limit_order(cls, symbol, price, mode: Literal['12h', '5m']):
-        # ? if exhaust_balance is False use 50% - it means that we are not currently holding any coin so lets use halve of our balance
-        # ? if exhaust_balance is True use 100% - it means that we are currently holding a coin and we should use 100%(the remaining 50%) of the wallet
         from tasks import check_order_status
         try:
+            if cls.CURRENT_RETRY == cls.MAX_RETRYS:
+                cls.CURRENT_RETRY = 0
+                logger.info(f"Maximum Retrys Reached")
+                # TODO - Send mail or something
+                return None
+
             logger.info(f'ATTEMPTING A BUY FOR>>> {symbol}')
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")
             wallet_free_balance = wallet_status.get("free")
@@ -168,9 +148,15 @@ class Wallet:
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
                 'free']
             logger.info(f"Wallet Balance After Buy == {wallet_status}")
+            cls.CURRENT_RETRY = 0
             return completed_orders
         except Exception as e:
-            logger.exception(f'ERROR OCCURED BUYING>>> {symbol}', exc_info=e)
+            if e.code == -1021:
+                while cls.CURRENT_RETRY <= 3:
+                    cls.CURRENT_RETRY += 1
+                    return cls.buy_limit_order(symbol=symbol, price=price, mode=mode)
+            logger.exception(
+                f'Failed to Process Buy After Retrys>>> {symbol}', exc_info=e)
 
     @classmethod
     def sell_order(cls, symbol):
@@ -259,10 +245,3 @@ class Wallet:
                                                 orderId=order_id)
         logger.info(f"Retrieved Order >>> {order_id}")
         return order_details
-
-    @classmethod
-    def float_precision(cls, f, n):
-        n = int(math.log10(1 / float(n)))
-        f = math.floor(float(f) * 10 ** n) / 10 ** n
-        f = "{:0.0{}f}".format(float(f), n)
-        return float(int(f)) if int(n) == 0 else float(f)
