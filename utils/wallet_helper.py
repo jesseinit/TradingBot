@@ -19,7 +19,7 @@ class Wallet:
     """ Manages all operations to be performed on a binance wallet """
 
     WALLET_COINS = ["USDT", "ADA", "BTC", "EOS", "THETA",
-                    "TRX", "ZIL", "XLM", "LINK", "ETH", "ADA", "ETC", "BCH"]
+                    "TRX", "ZIL", "XLM", "LINK", "ETH", "ETC", "BCH"]
     VALID_COINS_12H = ["ADA", "BTC", "EOS", "THETA", "TRX", "ZIL"]
     VALID_COINS_5M = ["XLM", "BTC", "LINK", "ETH", "ADA", "ETC", "BCH"]
     MAX_RETRYS = 3
@@ -45,21 +45,21 @@ class Wallet:
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")
             wallet_free_balance = wallet_status.get("free")
             logger.info(
-                f"Free Wallet Balance == {wallet_free_balance}")
+                f"Free Wallet Balance == {wallet_free_balance} >>> {symbol}")
 
             symbol_info = BinanceClient.get_symbol_info(symbol=symbol)
 
             tick_size = float(symbol_info['filters'][0]['tickSize'])
-            logger.info(f'Using Tick Size == {tick_size}')
+            # logger.info(f'Using Tick Size == {tick_size} >>>{symbol}')
 
             price_precision = int(round(-math.log(tick_size, 10), 0))
-            logger.info(f'Using Price Precision == {price_precision}')
+            # logger.info(f'Using Price Precision == {price_precision} >>> {symbol}')
 
             step_size = float(symbol_info['filters'][2]['stepSize'])
-            logger.info(f'Using Step Size == {step_size}')
+            # logger.info(f'Using Step Size == {step_size}')
 
             qty_precision = int(round(-math.log(step_size, 10), 0))
-            logger.info(f'Using Qty Precision == {price_precision}')
+            # logger.info(f'Using Qty Precision == {price_precision} >>> {symbol}')
 
             min_allowed_coin_amount = float(
                 symbol_info['filters'][3]['minNotional'])
@@ -69,14 +69,16 @@ class Wallet:
                 float(wallet_free_balance) * 0.999, price_precision)
 
             wallet_free_balance = wallet_free_balance * 0.5
-            logger.info(f'Using 50% balance == {wallet_free_balance}')
+            logger.info(
+                f'Using 50% balance == {wallet_free_balance} >>> {symbol}')
 
             # ? If we have open orders then we want to make use of 100% of our wallet
             if BinanceClient.get_open_orders():
                 # ? Use 100% of our 50% balance
                 wallet_free_balance = round(
                     float(wallet_status.get("free")) * 0.999, price_precision)
-                logger.info(f'Using 100% balance == {wallet_free_balance}')
+                logger.info(
+                    f'Using 100% balance == {wallet_free_balance} >>> {symbol}')
 
             # ? - Check to see that wallet_free_balance has enough balance to process the order
             if wallet_free_balance < min_allowed_coin_amount:
@@ -121,8 +123,6 @@ class Wallet:
 
                 # ? - Why are we incrementing the quoted price with the tick size
                 quoted_price = round(quoted_price + tick_size, price_precision)
-                logger.info(f'Split Order Qty == {current_buy_quantity}')
-                logger.info(f'Split Order Price == {quoted_price}')
 
                 try:
                     order_details = BinanceClient.order_limit_buy(
@@ -130,8 +130,6 @@ class Wallet:
                         quantity=current_buy_quantity,
                         price=quoted_price)
                     if order_details:
-                        logger.info(
-                            f'Order Placed == {order_details["orderId"]}')
                         check_order_status.apply_async(kwargs={
                             "mode": mode,
                             "symbol":
@@ -141,17 +139,25 @@ class Wallet:
                         }, countdown=config('BG_DELAY', default=300, cast=int)
                         )
                         completed_orders.append(order_details)
+                        logger.info(
+                            f'Split Order Qty == {current_buy_quantity} Price == {quoted_price} >>> {symbol} OrderID == {order_details["orderId"]}')
                 except Exception as e:
+                    if hasattr(e, 'code') and e.code == -2010:
+                        logger.info(
+                            f"Wallet Balance Not Enough to Complete Buy for {symbol}")
+                        continue
                     logger.exception(
-                        f'ERROR OCCURED BUYING - INSIDE LOOP>>> {symbol}', exc_info=e)
+                        f'Error Occured Buying >>> {symbol}', exc_info=e)
                     continue
+
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
                 'free']
             logger.info(f"Wallet Balance After Buy == {wallet_status}")
+
             cls.CURRENT_RETRY = 0
             return completed_orders
         except Exception as e:
-            if e.code == -1021:
+            if hasattr(e, 'code') and e.code == -1021:
                 while cls.CURRENT_RETRY <= 3:
                     cls.CURRENT_RETRY += 1
                     return cls.buy_limit_order(symbol=symbol, price=price, mode=mode)
@@ -176,7 +182,9 @@ class Wallet:
                                                        quantity=final_quantity)
             logger.info(f'COMPLETED A SELL FOR>>> {symbol}',
                         extra={"custom_dimensions": order_details})
-
+            wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
+                'free']
+            logger.info(f"Wallet Balance After Sell == {wallet_status}")
             return order_details
         except Exception as e:
             properties = {'custom_dimensions': e}
@@ -205,7 +213,10 @@ class Wallet:
 
                         logger.info(f'COMPLETED A SELL FOR>>> {symbol}',
                                     extra={"custom_dimensions": order_details})
-
+                        wallet_status = BinanceClient.get_asset_balance(
+                            asset="USDT")['free']
+                        logger.info(
+                            f"Wallet Balance After Sell == {wallet_status}")
                         return order_details
                     except:
                         if e.message in [
@@ -225,8 +236,8 @@ class Wallet:
             if e.status_code >= 500:
                 # Implement 3 trials
                 # Send mail to hugo about binana
-                logger.exception(f'ERROR OCCURED SELLING>>> {symbol}',
-                                 extra=properties)
+                logger.exception(
+                    f'Error Occured Selling >>> {symbol}', extra=properties)
 
     @classmethod
     def cancel_order(cls, symbol, order_id):

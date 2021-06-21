@@ -16,11 +16,14 @@ ENV = config("FLASK_ENV", default="development")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    '%(asctime)s | %(thread)d | %(levelname)s | %(message)s')
 if ENV == "production":
-    logger.addHandler(AzureLogHandler(
-        connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}"))
+    azure_handler = AzureLogHandler(
+        connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}")
+    azure_handler.setFormatter(formatter)
+    logger.addHandler(azure_handler)
 else:
-    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
     log_handler = logging.FileHandler('all.log')
     log_handler.setFormatter(formatter)
     logger.addHandler(log_handler)

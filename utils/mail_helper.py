@@ -1,7 +1,8 @@
+from datetime import datetime
+
+from decouple import config
 from flask_mail import Message
 from main import mail
-from datetime import datetime
-from decouple import config
 
 ALLOWED_MAILS = config(
     'MAIL_ADDRS',
@@ -49,7 +50,8 @@ class MailHelper:
             <p>Time In Force: {order_details['timeInForce']}</p>
             <p>Type: {order_details['type']}</p>
             <p>Side: {order_details['side']}</p>
-            <p>Filled Prices: {', '.join(str(fill['price']) for fill in order_details['fills'])}</p>
+            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
+            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
         </body>
         </html>
         """
@@ -76,7 +78,8 @@ class MailHelper:
             <p>Time In Force: {order_details['timeInForce']}</p>
             <p>Type: {order_details['type']}</p>
             <p>Side: {order_details['side']}</p>
-            <p>Filled Prices: {', '.join(str(fill['price']) for fill in order_details['fills'])}</p>
+            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
+            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
         </body>
         </html>
         """
