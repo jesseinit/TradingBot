@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 from decouple import config
 from flask_mail import Message
@@ -15,12 +16,13 @@ class MailHelper:
         recieved_at = kwargs.get('recieved_at')
         coin_name = kwargs.get('coin_name')
         details = kwargs.get('details')
+        price = json.loads(kwargs.get('details'))['price']
 
         # <p>Received At: {recieved_at.strftime("%d %B, %Y, %H:%M:%S")}</p>
         ai_incoming_data_template = f"""
         <html lang="en">
         <body>
-            <h3>Incoming AI Data</h3>
+            <h3>Incoming AI Data - {coin_name} at {price} </h3>
             <hr>
             <p>Received At: {recieved_at}</p>
             <p>Coin Name: {coin_name}</p>
@@ -40,7 +42,7 @@ class MailHelper:
         <body>
             <h3>Successfull Buy Order</h3>
             <hr>
-            <p>Completed At: {datetime.fromtimestamp(int(str(order_details['transactTime'])[:10])).strftime('%d %B, %Y, %H:%M:%S')}</p>
+            <p>Completed At: {datetime.fromtimestamp(int(str(order_details.get('time', order_details.get('transactTime')))[:10])).strftime('%d %B, %Y, %H:%M:%S')}</p>
             <p>Symbol: {order_details['symbol']}</p>
             <p>Order Id: {order_details['orderId']}</p>
             <p>Orig Qty: {order_details['origQty']}</p>
@@ -50,13 +52,16 @@ class MailHelper:
             <p>Time In Force: {order_details['timeInForce']}</p>
             <p>Type: {order_details['type']}</p>
             <p>Side: {order_details['side']}</p>
-            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
-            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
+            <p>Price: {order_details['price']}</p>
+            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get('fills') else order_details.get('price')}</p>
+            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get('fills') else order_details.get('price')}</p>
         </body>
         </html>
         """
+        bought_at = max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get(
+            'fills') else order_details.get('price')
         msg = Message(
-            f"Successfully Bought {order_details['symbol']} at {order_details['price']}",
+            f"Successfully Bought {order_details['symbol']} at {bought_at}",
             recipients=ALLOWED_MAILS,
             html=email_template)
         mail.send(msg)
@@ -68,7 +73,7 @@ class MailHelper:
         <body>
             <h3>Successfull Sell Order</h3>
             <hr>
-            <p>Completed At: {datetime.fromtimestamp(int(str(order_details['transactTime'])[:10])).strftime('%d %B, %Y, %H:%M:%S')}</p>
+            <p>Completed At: {datetime.fromtimestamp(int(str(order_details.get('time', order_details.get('transactTime')))[:10])).strftime('%d %B, %Y, %H:%M:%S')}</p>
             <p>Symbol: {order_details['symbol']}</p>
             <p>Order Id: {order_details['orderId']}</p>
             <p>Orig Qty: {order_details['origQty']}</p>
@@ -78,13 +83,15 @@ class MailHelper:
             <p>Time In Force: {order_details['timeInForce']}</p>
             <p>Type: {order_details['type']}</p>
             <p>Side: {order_details['side']}</p>
-            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
-            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details['fills'] else 'No Data'}</p>
+            <p>Max Filled Price: {max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get('fills') else order_details.get('price')}</p>
+            <p>Min Filled Price: {min(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get('fills') else order_details.get('price')}</p>
         </body>
         </html>
         """
+        sold_at = max(list(map(lambda fill: fill['price'], order_details['fills']))) if order_details.get(
+            'fills') else order_details.get('price')
         msg = Message(
-            f"Successfully Sold {order_details['symbol']} at {order_details['fills'][0]['price']}",
+            f"Successfully Sold {order_details['symbol']} at {sold_at}",
             recipients=ALLOWED_MAILS,
             html=email_template)
         mail.send(msg)

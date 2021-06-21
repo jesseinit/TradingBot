@@ -180,8 +180,8 @@ class Wallet:
                                                        side=SIDE_SELL,
                                                        type=ORDER_TYPE_MARKET,
                                                        quantity=final_quantity)
-            logger.info(f'COMPLETED A SELL FOR>>> {symbol}',
-                        extra={"custom_dimensions": order_details})
+            logger.info(f'Completed Sell >>> {symbol}', extra={
+                        "custom_dimensions": order_details})
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
                 'free']
             logger.info(f"Wallet Balance After Sell == {wallet_status}")
@@ -192,27 +192,20 @@ class Wallet:
             next_coin_value = round(coin_balance * 0.999, precision)
 
             if e.message in ['Account has insufficient balance for requested action.', 'Filter failure: LOT_SIZE']:
-                logger.warning(f'ERROR TYPE>>> {e.message}')
+                logger.warning(f'{e.message}')
                 retry_status = True
                 while retry_status:
                     try:
-                        logger.info(
-                            f"RETYING SELL ORDER WITH {next_coin_value} which is {round((next_coin_value/coin_balance) * 100, 2)}% of {coin_balance}"
-                        )
                         order_details = BinanceClient.create_order(
                             symbol=symbol,
                             side=SIDE_SELL,
                             type=ORDER_TYPE_MARKET,
                             quantity=next_coin_value)
-
                         retry_status = False
-
                         logger.info(
-                            f"SELL ORDER COMPLETED WITH {round((next_coin_value/coin_balance) * 100, 2)}% of {coin_balance} which is {next_coin_value}>>>"
-                        )
-
-                        logger.info(f'COMPLETED A SELL FOR>>> {symbol}',
-                                    extra={"custom_dimensions": order_details})
+                            f"Sell Order Completed with {round((next_coin_value/coin_balance) * 100, 2)}% of {coin_balance} which is {next_coin_value}")
+                        logger.info(f'Completed Sell >>> {symbol}', extra={
+                                    "custom_dimensions": order_details})
                         wallet_status = BinanceClient.get_asset_balance(
                             asset="USDT")['free']
                         logger.info(

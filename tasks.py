@@ -35,8 +35,8 @@ def check_order_status(self, mode: Literal['12h', '5m'] = None, symbol: str = No
                 coin_instance = FiveMinsCoinState.query.filter_by(
                     coin_name=coin_name).first()
                 if coin_instance:
-                    MailHelper.send_success_sell_mail(
-                        order_details=order_details)
+                    # MailHelper.send_success_sell_mail(order_details=order_details)
+                    send_success_buy_mail.delay(order_details=order_details)
                     coin_instance.update(is_holding=True)
 
             TransactionsAudit(

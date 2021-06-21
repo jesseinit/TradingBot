@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
 
-from blueprints.listener.listener_models import CoinState as TwelveHrsCoinState, IncomingCoinLog, FiveMinsCoinState
+from blueprints.listener.listener_models import CoinState as TwelveHrsCoinState
+from blueprints.listener.listener_models import (FiveMinsCoinState,
+                                                 IncomingCoinLog)
 from blueprints.listener.listener_serializer import AIDataSchema
 from blueprints.wallet.wallet_models import TransactionsAudit
 from flask import Blueprint, request
@@ -107,6 +109,9 @@ def ai_listener():
         # return {"status": "response recieved", "data": coin_signal}
 
         if trigger_state == "BUY":
+            send_ai_incoming_mail.delay(
+                recieved_at=recieved_at, coin_name=coin_signal.get('coin'),
+                details=json.dumps(coin_signal))
             buy_order_details = Wallet.buy_limit_order(
                 symbol=f"{coin_state_instance.coin_name.upper()}USDT",
                 price=coin_signal['price'], mode=trigger_mode)
@@ -134,10 +139,7 @@ def ai_listener():
                             order_type=order_detail['type'],
                             side=order_detail['side'],
                             fills=order_detail['fills']).save()
-                        send_success_buy_mail.delay(order_details=order_detail)
-                send_ai_incoming_mail.delay(
-                    recieved_at=recieved_at, coin_name=coin_signal.get('coin'),
-                    details=json.dumps(coin_signal))
+                        # send_success_buy_mail.delay(order_details=order_detail)
                 return {"status": "response recieved", "data": buy_order_details}
 
         if trigger_state == "SELL":
