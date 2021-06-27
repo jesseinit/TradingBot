@@ -1,16 +1,16 @@
 import logging
 
 from binance.exceptions import BinanceAPIException
-from flask import Flask, jsonify
+from celery import Celery
+from decouple import config
+from flask import Flask
 from flask_mail import Mail
+from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from celery import Celery
-from flask_marshmallow import Marshmallow
 
 from config import config as app_config
-from decouple import config
 
 ENV = config("FLASK_ENV", default="development")
 
@@ -22,7 +22,10 @@ if ENV == "production":
     azure_handler = AzureLogHandler(
         connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}")
     azure_handler.setFormatter(formatter)
+    file_handler = logging.FileHandler('all.log')
+    file_handler.setFormatter(formatter)
     logger.addHandler(azure_handler)
+    logger.addHandler(file_handler)
 else:
     log_handler = logging.FileHandler('all.log')
     log_handler.setFormatter(formatter)
@@ -68,6 +71,24 @@ def create_app(config_name: str = "developement"):
             "message": error.message,
             "code": error.code
         }, getattr(error, 'status_code', 500)
+
+    @app.errorhandler(Exception)
+    def internal_sever_error(error):
+        from tasks import send_exception_mail
+
+        logger.exception(
+            f'Error Occured Processing Incoming AI Data',
+            exc_info=error)
+
+        if hasattr(error, 'message'):
+            send_exception_mail.delay(error.message)
+        else:
+            send_exception_mail.delay(
+                'Error Occured Processing Incoming AI Data')
+
+        return {
+            "message": "Error Occured Processing Incoming AI Data",
+        }, 500
 
     @app.route("/")
     def hello_world():

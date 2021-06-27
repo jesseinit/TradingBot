@@ -129,13 +129,12 @@ class MailHelper:
         <html lang="en">
         <body>
             <h3>Error Occured</h3>
-            <p><stong>{exception_message}</strong><>
+            <p>Message: <stong>{exception_message}</strong></p>
             <p>I'll add extra context about the error on this line 🤯</p>
-
         </body>
         </html>
         """
-        msg = Message(f"Error Occured",
+        msg = Message(f"An Error Has Occured",
                       recipients=ALLOWED_MAILS,
                       html=email_template)
         mail.send(msg)

@@ -163,6 +163,7 @@ class Wallet:
                     return cls.buy_limit_order(symbol=symbol, price=price, mode=mode)
             logger.exception(
                 f'Failed to Process Buy After Retrys>>> {symbol}', exc_info=e)
+            raise e
 
     @classmethod
     def sell_order(cls, symbol):
