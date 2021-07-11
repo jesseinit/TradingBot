@@ -14,13 +14,17 @@ class Config:
     MAIL_USE_SSL = False
     MAIL_USE_TLS = True
     MAIL_DEBUG = False
+    # SQLALCHEMY_ENGINE_OPTIONS = {
+    #     "pool_pre_ping": True,
+    #     "pool_recycle": 300,
+    # }
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = config("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = False
+    SQLALCHEMY_ECHO = True
 
 
 class TestingConfig(Config):
@@ -36,7 +40,7 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = config("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = False
+    SQLALCHEMY_ECHO = True
 
 
 config = dict(development=DevelopmentConfig,

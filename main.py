@@ -1,5 +1,5 @@
 import logging
-
+import os
 from binance.exceptions import BinanceAPIException
 from celery import Celery
 from decouple import config
@@ -14,7 +14,9 @@ from config import config as app_config
 
 ENV = config("FLASK_ENV", default="development")
 
+os.makedirs(os.path.dirname('logs/'), exist_ok=True)
 logger = logging.getLogger(__name__)
+db_logger = logging.getLogger('sqlalchemy')
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
     '%(asctime)s | %(thread)d | %(levelname)s | %(message)s')
@@ -22,13 +24,19 @@ if ENV == "production":
     azure_handler = AzureLogHandler(
         connection_string=f"InstrumentationKey={config('INSTRUMENTATION_KEY')}")
     azure_handler.setFormatter(formatter)
-    file_handler = logging.FileHandler('all.log')
+    file_handler = logging.FileHandler('logs/all.log')
     file_handler.setFormatter(formatter)
     logger.addHandler(azure_handler)
     logger.addHandler(file_handler)
+    db_handler = logging.FileHandler('logs/db.log')
+    db_handler.setLevel(logging.DEBUG)
+    logging.getLogger('sqlalchemy').addHandler(db_handler)
 else:
-    log_handler = logging.FileHandler('all.log')
+    log_handler = logging.FileHandler('logs/all.log')
     log_handler.setFormatter(formatter)
+    db_handler = logging.FileHandler('logs/db.log')
+    db_handler.setLevel(logging.DEBUG)
+    db_logger.addHandler(db_handler)
     logger.addHandler(log_handler)
 
 db = SQLAlchemy()
@@ -71,6 +79,10 @@ def create_app(config_name: str = "developement"):
             "message": error.message,
             "code": error.code
         }, getattr(error, 'status_code', 500)
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return {}, 404
 
     @app.errorhandler(Exception)
     def internal_sever_error(error):

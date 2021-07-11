@@ -24,14 +24,8 @@ def ai_listener():
         ai_response = request.get_json(force=True)
         coin_signal = ai_response.get('data')[0]
         logger.info(f'INCOMING AI DATA>>>>{json.dumps(ai_response)}')
-        # keys_count = len(coin_signal.keys())
 
-        # signal_mode = 'twelve_hrs_candle' if keys_count == 6 else 'five_mins_candle'
-
-        # print("schema_type>>", signal_mode)
         coin_signal = AIDataSchema().load(coin_signal)
-
-        # return {"status": "response recieved", "coin_signal": coin_signal}
 
         recieved_at = datetime.now()
 
@@ -123,7 +117,7 @@ def ai_listener():
                     coin_state_instance.update(is_holding=True)
                 for order_detail in buy_order_details:
                     if has_filled_orders:
-                        with open("buy_orders.log", 'a') as buy_log:
+                        with open("logs/buy_orders.log", 'a') as buy_log:
                             buy_log.write(f"{json.dumps(order_detail)}\n\n")
                         TransactionsAudit(
                             occured_at=datetime.fromtimestamp(
@@ -148,7 +142,7 @@ def ai_listener():
             if sell_order_details:
                 order_data = sell_order_details
                 coin_state_instance.update(is_holding=False)
-                with open("sell_orders.log", 'a') as sell_log:
+                with open("logs/sell_orders.log", 'a') as sell_log:
                     sell_log.write(f"{json.dumps(sell_order_details)}\n\n")
                 TransactionsAudit(
                     occured_at=datetime.fromtimestamp(
