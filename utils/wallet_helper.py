@@ -1,6 +1,7 @@
 import json
 import math
 import time
+from decimal import Decimal
 from typing import Literal
 
 from binance.client import Client
@@ -177,18 +178,22 @@ class Wallet:
             precision = int(round(-math.log(step_size, 10), 0))
             coin_balance = float(coin_balance)
             final_quantity = round(coin_balance, precision)
+
             order_details = BinanceClient.create_order(symbol=symbol,
                                                        side=SIDE_SELL,
                                                        type=ORDER_TYPE_MARKET,
                                                        quantity=final_quantity)
+
             logger.info(f'Completed Sell >>> {symbol}', extra={
                         "custom_dimensions": order_details})
+
             wallet_status = BinanceClient.get_asset_balance(asset="USDT")[
                 'free']
+
             logger.info(f"Wallet Balance After Sell == {wallet_status}")
+
             return order_details
         except Exception as e:
-            properties = {'custom_dimensions': e}
             max_allowed_qty = round(final_quantity * 0.998, precision)
             next_coin_value = round(coin_balance * 0.999, precision)
 
@@ -221,17 +226,13 @@ class Wallet:
                             next_coin_value = round(next_coin_value * 0.999,
                                                     precision)
                             if next_coin_value <= max_allowed_qty:
-                                # Send mail to hugo about failed retry status
                                 logger.info(
                                     f"STOPPED RETRY LOGIC - WE CANNOT GO MORE THAN {max_allowed_qty} CURRENTLY {next_coin_value}>>>"
                                 )
                                 break
-
-            if e.status_code >= 500:
-                # Implement 3 trials
-                # Send mail to hugo about binana
-                logger.exception(
-                    f'Error Occured Selling >>> {symbol}', extra=properties)
+            logger.exception(
+                f'Error Occured Selling >>> {symbol}', exc_info=e)
+            raise e
 
     @classmethod
     def cancel_order(cls, symbol, order_id):

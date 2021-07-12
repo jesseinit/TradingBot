@@ -1,4 +1,4 @@
-from main import db
+from main import db, logger
 from sqlalchemy import func
 from utils.model_utils import UtilityMixin
 from utils.wallet_helper import Wallet
@@ -58,15 +58,28 @@ class FiveMinsCoinState(UtilityMixin, db.Model):  # type: ignore
     is_holding = db.Column(db.Boolean, index=True,
                            default=False, nullable=True)
 
-    def compute_trigger_state(self):
-        if self.coin_name in Wallet.VALID_COINS_5M and all([self.trigger_one_status is True, self.trigger_two_status is True, self.is_holding is False]):
+    def compute_trigger_state(self, incoming_t1_value=None, incoming_t2_value=None):
+        current_t1_value = self.trigger_one_status
+        current_t2_value = self.trigger_two_status
+
+        if incoming_t1_value is not None:
+            final_t1_value = incoming_t1_value
+        else:
+            final_t1_value = current_t1_value
+
+        if incoming_t2_value is not None:
+            final_t2_value = incoming_t2_value
+        else:
+            final_t2_value = current_t2_value
+
+        if self.coin_name in Wallet.VALID_COINS_5M and all([final_t1_value is True, final_t2_value is True, self.is_holding is False]):
             return "BUY"
 
-        if self.coin_name in Wallet.VALID_COINS_5M and self.trigger_one_status is False and self.trigger_two_status is True and self.is_holding is True:
+        if self.coin_name in Wallet.VALID_COINS_5M and final_t1_value is False and final_t2_value is True and self.is_holding is True:
             return "SELL"
 
-        if self.coin_name in Wallet.VALID_COINS_5M and self.trigger_one_status is True and self.trigger_two_status is False and self.is_holding is True:
+        if self.coin_name in Wallet.VALID_COINS_5M and final_t1_value is True and final_t2_value is False and self.is_holding is True:
             return "SELL"
 
-        if self.coin_name in Wallet.VALID_COINS_5M and all([self.trigger_one_status is False or self.trigger_two_status is False]) and self.is_holding is True:
+        if self.coin_name in Wallet.VALID_COINS_5M and all([final_t1_value is False or final_t2_value is False]) and self.is_holding is True:
             return "SELL"

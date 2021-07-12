@@ -41,42 +41,10 @@ def ai_listener():
         incoming_log_instance.save()
 
         trigger_mode = coin_signal.get("time")
-        coin_state_instance = None
-        if trigger_mode == '12h':
-            return {"status": "response recieved", "coin_signal": coin_signal}
-            coin_instance = TwelveHrsCoinState.query.filter_by(
-                coin_name=coin_signal.get('coin')).first()
 
-            if not coin_instance:
-                TwelveHrsCoinState(
-                    coin_name=coin_signal.get('coin'),
-                    trigger_one_status=coin_signal.get('trigger1'),
-                    trigger_two_status=coin_signal.get('trigger2'),
-                    trigger_three_status=coin_signal.get('trigger3'),
-                    trigger_four_status=coin_signal.get('trigger4'),
-                    updated_at=datetime.now()
-                ).save()
-
-            if coin_instance:
-                coin_instance.update(
-                    trigger_one_status=coin_signal.get(
-                        'trigger1', coin_instance.trigger_one_status),
-                    trigger_two_status=coin_signal.get(
-                        'trigger2', coin_instance.trigger_two_status),
-                    trigger_three_status=coin_signal.get(
-                        'trigger3', coin_instance.trigger_three_status),
-                    trigger_four_status=coin_signal.get(
-                        'trigger4', coin_instance.trigger_four_status),
-                    updated_at=datetime.now())
-
-            # Check current coin state
-            coin_state_instance = TwelveHrsCoinState.query.filter_by(
-                coin_name=coin_signal.get('coin')).first()
-
-        elif trigger_mode == '5m':
+        if trigger_mode == '5m':
             coin_instance = FiveMinsCoinState.query.filter_by(
                 coin_name=coin_signal.get('coin')).first()
-
             if not coin_instance:
                 FiveMinsCoinState(
                     coin_name=coin_signal.get('coin'),
@@ -85,21 +53,17 @@ def ai_listener():
                     updated_at=datetime.now()
                 ).save()
 
-            if coin_instance:
-                coin_instance.update(
-                    trigger_one_status=coin_signal.get(
-                        'trigger1', coin_instance.trigger_one_status),
-                    trigger_two_status=coin_signal.get(
-                        'trigger2', coin_instance.trigger_two_status),
-                    updated_at=datetime.now())
-
-            coin_state_instance = FiveMinsCoinState.query.filter_by(
-                coin_name=coin_signal.get('coin')).first()
+        coin_state_instance = FiveMinsCoinState.query.filter_by(
+            coin_name=coin_signal.get('coin')).first()
 
         # Compute coin trigger state
-        trigger_state = coin_state_instance.compute_trigger_state()
+        trigger_state = coin_state_instance.compute_trigger_state(
+            incoming_t1_value=coin_signal.get('trigger1'),
+            incoming_t2_value=coin_signal.get('trigger2'))
+
         logger.info(
             f'Trigger State for {coin_signal.get("coin")} == {trigger_state}')
+
         # return {"status": "response recieved", "data": coin_signal}
 
         if trigger_state == "BUY":
@@ -109,12 +73,22 @@ def ai_listener():
             buy_order_details = Wallet.buy_limit_order(
                 symbol=f"{coin_state_instance.coin_name.upper()}USDT",
                 price=coin_signal['price'], mode=trigger_mode)
+
             if buy_order_details:
+                # ? Persis state change to DB
+                coin_state_instance.update(
+                    trigger_one_status=coin_signal.get(
+                        'trigger1', coin_state_instance.trigger_one_status),
+                    trigger_two_status=coin_signal.get(
+                        'trigger2', coin_state_instance.trigger_two_status),
+                    updated_at=datetime.now())
+
                 # ? We hav to ensure that some orders in buy_order_details have status filled before we set coin to a holding state
                 has_filled_orders = bool(
                     list(filter(lambda order: order['status'] == 'FILLED', buy_order_details)))
                 if has_filled_orders:
                     coin_state_instance.update(is_holding=True)
+
                 for order_detail in buy_order_details:
                     if has_filled_orders:
                         with open("logs/buy_orders.log", 'a') as buy_log:
@@ -133,17 +107,25 @@ def ai_listener():
                             order_type=order_detail['type'],
                             side=order_detail['side'],
                             fills=order_detail['fills']).save()
-                        # send_success_buy_mail.delay(order_details=order_detail)
                 return {"status": "response recieved", "data": buy_order_details}
+            return {"status": "response recieved"}
 
         if trigger_state == "SELL":
             sell_order_details = Wallet.sell_order(
                 symbol=f"{coin_state_instance.coin_name.upper()}USDT")
             if sell_order_details:
-                order_data = sell_order_details
-                coin_state_instance.update(is_holding=False)
+                # ? Persis state change to DB
+                coin_state_instance.update(
+                    trigger_one_status=coin_signal.get(
+                        'trigger1', coin_state_instance.trigger_one_status),
+                    trigger_two_status=coin_signal.get(
+                        'trigger2', coin_state_instance.trigger_two_status),
+                    updated_at=datetime.now(),
+                    is_holding=False)
+
                 with open("logs/sell_orders.log", 'a') as sell_log:
                     sell_log.write(f"{json.dumps(sell_order_details)}\n\n")
+
                 TransactionsAudit(
                     occured_at=datetime.fromtimestamp(
                         int(str(sell_order_details['transactTime'])[:10])),
@@ -166,9 +148,10 @@ def ai_listener():
 
                 return {
                     "status": "response recieved",
-                    "data": order_data['fills'] if order_data else None
+                    "data": sell_order_details['fills'] if sell_order_details else None
                 }
-            return {"status": "response recieved"}
+
+            return {"status": "response recieved and rolled"}
 
     except Exception as e:
         ai_response = request.get_json(force=True)
