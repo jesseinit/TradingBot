@@ -5,7 +5,7 @@ from decouple import config
 
 class Config:
     SQLALCHEMY_ECHO = True
-    SECRET_KEY = "basdasdafasdf9sf759as5dfasdf"
+    SECRET_KEY = config("SECRET_KEY")
     MAIL_SERVER = 'smtp.office365.com'
     MAIL_PORT = 587
     MAIL_USERNAME = "alerts@chc.capital"
